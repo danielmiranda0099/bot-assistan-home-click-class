@@ -13,6 +13,7 @@ const { hintDisabled = false, tryAgainDisabled = false } = Astro.props;
   <Button variant="secondary" type="button">Reset</Button>
   <Button variant="warning" type="button" disabled={tryAgainDisabled}>Try Again</Button>
   <Button variant="warning" type="button" disabled={hintDisabled}>Hint</Button>
+  <Button variant="success" type="button" id="summary-button" disabled>See Summary</Button>
 </div>
 
 <style>
@@ -21,5 +22,6 @@ const { hintDisabled = false, tryAgainDisabled = false } = Astro.props;
     gap: var(--spacing-sm);
     justify-content: center;
     margin: var(--spacing-md) 0;
+    flex-wrap: wrap;
   }
 </style>

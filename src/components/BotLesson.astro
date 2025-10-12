@@ -4,6 +4,7 @@ import TextInput from "./TextInput.astro";
 import LessonControls from "./LessonControls.astro";
 import ProgressBar from "./ProgressBar.astro";
 import SpeechToText from "./SpeechToText.astro";
+import SummaryModal from "./SummaryModal.astro";
 ---
 
 <div id="bot-lesson" class="bot-lesson">
@@ -17,6 +18,7 @@ import SpeechToText from "./SpeechToText.astro";
   <SpeechToText />
   <TextInput />
   <LessonControls />
+  <SummaryModal />
 </div>
 
 <script>
@@ -30,7 +32,7 @@ import SpeechToText from "./SpeechToText.astro";
   } from "../stores/OpenAIService.ts";
   import type { Activity, Message } from "../types/index.ts";
   // import activityData from "../activities/a2.json";
-  import activityData from "../activities/a2.json";
+  import activityData from "../activities/a1.json";
   // import activityData from "../activities/example-activity-no-hints.json";
   import { marked } from "marked";
 
@@ -46,6 +48,11 @@ import SpeechToText from "./SpeechToText.astro";
   let hintUsedForCurrentQuestion = false;
   let waitingMessageId: string | null = null;
   let questionStartTime: number | null = null;
+
+  function isLastQuestion(): boolean {
+    const totalQuestions = activityStore.currentActivity?.questions.length || 0;
+    return activityStore.currentQuestionIndex === totalQuestions - 1;
+  }
 
   // Load activity
   console.log("Loading activity:", activityData);
@@ -79,6 +86,11 @@ import SpeechToText from "./SpeechToText.astro";
     );
     if (hintButton) {
       hintButton.addEventListener("click", showHint);
+    }
+
+    const summaryButton = document.getElementById("summary-button");
+    if (summaryButton) {
+      summaryButton.addEventListener("click", handleShowSummary);
     }
 
     // NUEVO: Agregar listener para Try Again
@@ -200,6 +212,34 @@ import SpeechToText from "./SpeechToText.astro";
       addMessage("hint", question.hint);
       hintUsedForCurrentQuestion = true;
       updateUI();
+    }
+  }
+
+  function handleShowSummary() {
+    console.log("Show Summary clicked");
+
+    // Guard: solo permitir en FEEDBACK cuando es la última pregunta
+    if (!canPerformAction("show summary", [BotState.FEEDBACK])) {
+      return;
+    }
+
+    if (!isLastQuestion()) {
+      console.warn("Cannot show summary: not on last question");
+      return;
+    }
+
+    const currentQuestion = activityStore.getCurrentQuestion();
+    if (
+      !currentQuestion ||
+      !activityStore.isQuestionAnswered(currentQuestion.id)
+    ) {
+      console.warn("Cannot show summary: last question not answered");
+      return;
+    }
+
+    // Abrir el modal
+    if ((window as any).openSummaryModal) {
+      (window as any).openSummaryModal();
     }
   }
 
@@ -408,7 +448,8 @@ import SpeechToText from "./SpeechToText.astro";
     const canGoNext =
       isQuestionAnswered &&
       stateMachine.currentState === BotState.FEEDBACK &&
-      !lessonEnded;
+      !lessonEnded &&
+      !isLastQuestion();
 
     console.log("Can go back:", canGoBack);
     console.log("Can go next:", canGoNext);
@@ -416,6 +457,18 @@ import SpeechToText from "./SpeechToText.astro";
     // Llamar función global del ProgressBar
     if ((window as any).updateNavigationButtons) {
       (window as any).updateNavigationButtons(canGoBack, canGoNext);
+    }
+
+    // === BOTÓN SEE SUMMARY ===
+    const summaryButton = document.getElementById(
+      "summary-button"
+    ) as HTMLButtonElement;
+    if (summaryButton) {
+      const enableSummary =
+        isLastQuestion() &&
+        isQuestionAnswered &&
+        stateMachine.currentState === BotState.FEEDBACK;
+      summaryButton.disabled = !enableSummary;
     }
 
     // === PROGRESS BAR ===
@@ -806,7 +859,6 @@ import SpeechToText from "./SpeechToText.astro";
         // No hay más preguntas, terminar lección
         console.log("No more questions, ending lesson");
         lessonEnded = true;
-        addMessage("assistant", "No more questions, ending lesson");
         stateMachine.transition(BotState.SUMMARY);
       }
 

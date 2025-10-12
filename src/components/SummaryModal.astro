@@ -1,0 +1,419 @@
+---
+// SummaryModal.astro
+---
+
+<div id="summary-modal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-button" id="close-modal" aria-label="Close modal">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <div class="modal-header">
+      <div class="trophy-icon">🏆</div>
+      <h2>Lesson Completed!</h2>
+    </div>
+
+    <div class="modal-body">
+      <!-- Results Summary -->
+      <div class="results-grid">
+        <div class="result-card correct">
+          <div class="result-number" id="correct-count">0</div>
+          <div class="result-label">Correct</div>
+        </div>
+        <div class="result-card partial">
+          <div class="result-number" id="partial-count">0</div>
+          <div class="result-label">Partial</div>
+        </div>
+        <div class="result-card incorrect">
+          <div class="result-number" id="incorrect-count">0</div>
+          <div class="result-label">Needs Work</div>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="summary-section">
+        <h3>Summary</h3>
+        <p id="summary-text">
+          Great work on completing this lesson! You've shown good understanding
+          of the material and made progress in your English learning journey.
+        </p>
+      </div>
+
+      <!-- Important Corrections -->
+      <div class="corrections-section">
+        <h3>Important Corrections</h3>
+        <ul id="corrections-list">
+          <li>Remember to use proper subject-verb agreement</li>
+          <li>Pay attention to preposition usage</li>
+          <li>Practice your pronunciation of difficult sounds</li>
+        </ul>
+      </div>
+
+      <!-- Tips Section -->
+      <div class="tips-section">
+        <h3>Tips & Next Steps</h3>
+        <ul id="tips-list">
+          <li>Review the questions you found challenging</li>
+          <li>Practice similar conversations in real-life situations</li>
+          <li>Try the next level to continue improving</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="action-button primary" id="restart-lesson">
+        Restart Lesson
+      </button>
+      <button class="action-button secondary" id="new-lesson">
+        Try New Lesson
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 1rem;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+
+  .close-button:hover {
+    background-color: #f0f0f0;
+    color: #333;
+  }
+
+  .modal-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 2px solid #f0f0f0;
+  }
+
+  .trophy-icon {
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    animation: bounce 1s ease infinite;
+  }
+
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    color: var(--dark-color);
+    font-size: 1.75rem;
+  }
+
+  .modal-body {
+    padding: 2rem;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .result-card {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: 0.75rem;
+    background: #f8f9fa;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .result-card.correct {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-color: var(--success-color);
+  }
+
+  .result-card.partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: var(--warning-color);
+  }
+
+  .result-card.incorrect {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-color: var(--danger-color);
+  }
+
+  .result-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+  }
+
+  .result-card.correct .result-number {
+    color: var(--success-color);
+  }
+
+  .result-card.partial .result-number {
+    color: #e0a800;
+  }
+
+  .result-card.incorrect .result-number {
+    color: var(--danger-color);
+  }
+
+  .result-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .summary-section,
+  .corrections-section,
+  .tips-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-section h3,
+  .corrections-section h3,
+  .tips-section h3 {
+    margin: 0 0 1rem 0;
+    color: var(--dark-color);
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .summary-section h3::before {
+    content: "📝";
+  }
+
+  .corrections-section h3::before {
+    content: "✏️";
+  }
+
+  .tips-section h3::before {
+    content: "💡";
+  }
+
+  .summary-section p {
+    margin: 0;
+    line-height: 1.6;
+    color: #555;
+  }
+
+  .corrections-section ul,
+  .tips-section ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style: none;
+  }
+
+  .corrections-section li,
+  .tips-section li {
+    position: relative;
+    padding-left: 0.5rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+    color: #555;
+  }
+
+  .corrections-section li::before {
+    content: "→";
+    position: absolute;
+    left: -1.25rem;
+    color: var(--danger-color);
+    font-weight: bold;
+  }
+
+  .tips-section li::before {
+    content: "✓";
+    position: absolute;
+    left: -1.25rem;
+    color: var(--success-color);
+    font-weight: bold;
+  }
+
+  .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 2px solid #f0f0f0;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .action-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-button.primary {
+    background-color: var(--primary-color);
+    color: white;
+  }
+
+  .action-button.primary:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  }
+
+  .action-button.secondary {
+    background-color: var(--secondary-color);
+    color: white;
+  }
+
+  .action-button.secondary:hover {
+    background-color: #545b62;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+  }
+
+  @media (max-width: 640px) {
+    .results-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .modal-footer {
+      flex-direction: column;
+    }
+
+    .action-button {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("summary-modal");
+    const closeButton = document.getElementById("close-modal");
+    const restartButton = document.getElementById("restart-lesson");
+    const newLessonButton = document.getElementById("new-lesson");
+
+    if (closeButton) {
+      closeButton.addEventListener("click", closeModal);
+    }
+
+    if (restartButton) {
+      restartButton.addEventListener("click", () => {
+        closeModal();
+        // Esperar a que el modal se cierre antes de resetear
+        setTimeout(() => {
+          // Buscar el botón Reset y hacer click
+          const resetBtn = document.querySelector(
+            ".lesson-controls button:first-child"
+          ) as HTMLButtonElement;
+          if (resetBtn) {
+            resetBtn.click();
+          }
+        }, 300);
+      });
+    }
+
+    if (newLessonButton) {
+      newLessonButton.addEventListener("click", () => {
+        alert("New lesson feature coming soon!");
+        closeModal();
+      });
+    }
+
+    // Close modal when clicking outside
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal?.classList.contains("active")) {
+        closeModal();
+      }
+    });
+  });
+
+  function closeModal() {
+    const modal = document.getElementById("summary-modal");
+    modal?.classList.remove("active");
+  }
+
+  function openModal() {
+    const modal = document.getElementById("summary-modal");
+    modal?.classList.add("active");
+  }
+
+  // Export function for external use
+  (window as any).openSummaryModal = openModal;
+  (window as any).closeSummaryModal = closeModal;
+</script>
