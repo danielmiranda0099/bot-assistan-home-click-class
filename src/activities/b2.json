@@ -1,0 +1,113 @@
+{
+  "id": "activity-5",
+  "title": "Prudence: The Power of Holding Back",
+  "description": "Reflect on the concept of prudence — holding back, pausing, and choosing wiser responses — and practice expressing personal insights through discussion questions.",
+  "activityContext": "Have you ever said something you wish you hadn’t? Acted in a way that made you feel unbalanced? Or made a decision that didn’t go your way? After those moments, you may have felt a strange discomfort — your conscience speaking. That voice guides us, reminding us when we could have done better. Prudence is the strength to pause before reacting, to weigh words and actions, and to act with intention rather than impulse. It doesn’t mean silence or fear, but wisdom: choosing the right words, timing, and attitude. Real power lies not in reacting instantly, but in mastering the ability to hold back and choose wisely. Where in your life could you start practicing prudence today?",
+  "level": "B2",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "text",
+      "question": "What are the most important key points the text expresses, and why do you think they matter? Explain the points.",
+      "hint": "Think about conscience, impulse, and the value of pausing before reacting.",
+      "evaluatePoints": [
+        "Identifies at least 2–3 key points from the text",
+        "Explains why they matter",
+        "Uses clear reasoning"
+      ]
+    },
+    {
+      "id": "q2",
+      "type": "text",
+      "question": "Is it easier to be imprudent than to be prudent? Why do you think that is? Do you agree or disagree? Explain your reasoning.",
+      "hint": "Compare acting on impulse vs. pausing to reflect.",
+      "evaluatePoints": [
+        "Takes a clear position",
+        "Supports with explanation",
+        "Shows awareness of self-control"
+      ]
+    },
+    {
+      "id": "q3",
+      "type": "text",
+      "question": "When others let their 'demons' speak, how do you typically respond — defend, withdraw, attack, or pause? Explain.",
+      "hint": "Think about your usual reactions in heated situations.",
+      "evaluatePoints": [
+        "Describes personal reaction style",
+        "Gives an example or explanation",
+        "Shows self-reflection"
+      ]
+    },
+    {
+      "id": "q4",
+      "type": "text",
+      "question": "What situations tend to trigger strong emotional reactions in you? How do you usually respond?",
+      "hint": "Consider stress, conflict, or personal challenges.",
+      "evaluatePoints": [
+        "Identifies personal triggers",
+        "Explains typical reactions",
+        "Shows awareness of patterns"
+      ]
+    },
+    {
+      "id": "q5",
+      "type": "text",
+      "question": "In your opinion, is holding back always the right choice? How do you know when to speak up or act and when to hold back?",
+      "hint": "Think about balance: prudence vs. silence.",
+      "evaluatePoints": [
+        "Explores pros and cons",
+        "Provides reasoning",
+        "Shows critical thinking"
+      ]
+    },
+    {
+      "id": "q6",
+      "type": "text",
+      "question": "Is it always possible to pause and choose your reaction, even in high-stress situations? How? Why or why not?",
+      "hint": "Reflect on self-control under pressure.",
+      "evaluatePoints": [
+        "Takes a clear stance",
+        "Gives reasoning or examples",
+        "Acknowledges limits or strategies"
+      ]
+    },
+    {
+      "id": "q7",
+      "type": "text",
+      "question": "In what areas of your life (work, family, social media, personal conflict) do you struggle most to be prudent? Explain why.",
+      "hint": "Think about everyday contexts where you face challenges.",
+      "evaluatePoints": [
+        "Identifies context(s)",
+        "Explains challenges",
+        "Shows personal insight"
+      ]
+    },
+    {
+      "id": "q8",
+      "type": "text",
+      "question": "Do you think your conscience is more of a guide, a critic, or a burden? Why?",
+      "hint": "Reflect on how you experience your inner voice.",
+      "evaluatePoints": [
+        "Chooses one perspective",
+        "Supports with reasoning",
+        "Shows reflection on conscience"
+      ]
+    },
+    {
+      "id": "q9",
+      "type": "text",
+      "question": "If you had to teach one younger person the value of prudence, what story or example from your life would you share?",
+      "hint": "Think of a time you learned to hold back or act wisely.",
+      "evaluatePoints": [
+        "Provides personal example",
+        "Connects to prudence",
+        "Shows ability to teach a lesson"
+      ]
+    }
+  ],
+  "metadata": {
+    "duration": 20,
+    "difficulty": "upper-intermediate",
+    "tags": ["prudence", "self-control", "reflection", "values", "B2"]
+  }
+}

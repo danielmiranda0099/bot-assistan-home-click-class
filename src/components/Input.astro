@@ -1,0 +1,66 @@
+---
+// Input.astro
+interface Props {
+  type?: "text" | "email" | "password" | "textarea";
+  placeholder?: string;
+  value?: string;
+  disabled?: boolean;
+  required?: boolean;
+  rows?: number;
+}
+
+const {
+  type = "text",
+  placeholder = "",
+  value = "",
+  disabled = false,
+  required = false,
+  rows = 3,
+} = Astro.props;
+---
+
+{type === "textarea" ? (
+  <textarea
+    class="input textarea"
+    placeholder={placeholder}
+    disabled={disabled}
+    required={required}
+    rows={rows}
+  >{value}</textarea>
+) : (
+  <input
+    class="input"
+    type={type}
+    placeholder={placeholder}
+    value={value}
+    disabled={disabled}
+    required={required}
+  />
+)}
+
+<style>
+  .input {
+    padding: var(--spacing-sm);
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow);
+  }
+
+  .input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+  }
+
+  .textarea {
+    resize: vertical;
+  }
+</style>

@@ -1,0 +1,996 @@
+---
+// BotLesson.astro
+import TextInput from "./TextInput.astro";
+import LessonControls from "./LessonControls.astro";
+import ProgressBar from "./ProgressBar.astro";
+import SpeechToText from "./SpeechToText.astro";
+---
+
+<div id="bot-lesson" class="bot-lesson">
+  <ProgressBar current={0} total={0} />
+  <div class="chat-container">
+    <button id="iniciar-btn" class="iniciar-btn">Iniciar</button>
+    <div id="chat-messages" class="chat-messages">
+      <!-- Messages will be added here -->
+    </div>
+  </div>
+  <SpeechToText />
+  <TextInput />
+  <LessonControls />
+</div>
+
+<script>
+  import { BotState } from "../types/index.ts";
+  import { BotStateMachine } from "../stores/StateMachine.ts";
+  import { ActivityStore } from "../stores/ActivityStore.ts";
+  import { ChatStore } from "../stores/ChatStore.ts";
+  import {
+    OpenAIService,
+    type OpenAIFeedback,
+  } from "../stores/OpenAIService.ts";
+  import type { Activity, Message } from "../types/index.ts";
+  // import activityData from "../activities/a2.json";
+  import activityData from "../activities/a2.json";
+  // import activityData from "../activities/example-activity-no-hints.json";
+  import { marked } from "marked";
+
+  const OPENAI_API_KEY = import.meta.env.PUBLIC_OPENAI_API_KEY;
+  const OPENAI_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_ASSISTANT_ID;
+
+  // Initialize stores and state machine
+  const stateMachine = new BotStateMachine();
+  const activityStore = new ActivityStore();
+  const chatStore = new ChatStore();
+  const openAIService = new OpenAIService(OPENAI_API_KEY, OPENAI_ASSISTANT_ID);
+  let lessonEnded = false;
+  let hintUsedForCurrentQuestion = false;
+  let waitingMessageId: string | null = null;
+  let questionStartTime: number | null = null;
+
+  // Load activity
+  console.log("Loading activity:", activityData);
+  activityStore.loadActivity(activityData as Activity);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const iniciarBtn = document.getElementById("iniciar-btn");
+    if (iniciarBtn) {
+      iniciarBtn.addEventListener("click", startLesson);
+    }
+
+    const sendButton = document.querySelector(".text-input-container button");
+    if (sendButton) {
+      sendButton.addEventListener("click", handleUserInput);
+    }
+
+    const clearButton = document.getElementById("clear-button");
+    if (clearButton) {
+      clearButton.addEventListener("click", handleClearInput);
+    }
+
+    const resetButton = document.querySelector(
+      ".lesson-controls button:first-child"
+    );
+    if (resetButton) {
+      resetButton.addEventListener("click", resetLesson);
+    }
+
+    const hintButton = document.querySelector(
+      ".lesson-controls button:nth-child(3)"
+    );
+    if (hintButton) {
+      hintButton.addEventListener("click", showHint);
+    }
+
+    // NUEVO: Agregar listener para Try Again
+    const tryAgainButton = document.querySelector(
+      ".lesson-controls button:nth-child(2)"
+    );
+    if (tryAgainButton) {
+      tryAgainButton.addEventListener("click", handleTryAgain);
+    }
+
+    // NUEVO: Agregar listeners para navegación
+    document.addEventListener("navigation-back", handleBackNavigation);
+    document.addEventListener("navigation-next", handleNextNavigation);
+
+    updateUI();
+  });
+
+  function startLesson() {
+    // Hide the iniciar button before starting
+    const iniciarBtn = document.getElementById(
+      "iniciar-btn"
+    ) as HTMLButtonElement;
+    if (iniciarBtn) {
+      iniciarBtn.style.display = "none";
+    }
+
+    // NUEVO: Inicializar storage para esta actividad
+    if (activityStore.currentActivity) {
+      chatStore.initializeStorage(activityStore.currentActivity.id);
+    }
+
+    // NUEVO: Establecer primera pregunta en ChatStore
+    const firstQuestion = activityStore.getCurrentQuestion();
+    if (firstQuestion) {
+      chatStore.setCurrentQuestion(firstQuestion.id);
+    }
+
+    stateMachine.transition(BotState.READY_CHECK);
+    const greeting = getRandomGreeting();
+    addMessage("greeting", greeting);
+    stateMachine.transition(BotState.ASK);
+    askQuestion();
+    updateUI();
+  }
+
+  function resetLesson() {
+    console.log("🔄 RESETTING LESSON");
+
+    // === 1. LIMPIAR STORAGE COMPLETAMENTE ===
+    chatStore.clearAllStorage();
+    console.log("✓ localStorage cleared");
+
+    // === 2. LIMPIAR TODOS LOS CHATS (incluyendo Map interna) ===
+    chatStore.questionChats.clear(); // NUEVO: limpiar el Map interno
+    chatStore.clearMessages();
+    renderMessages();
+    console.log("✓ All chats cleared");
+
+    // === 3. RESETEAR ACTIVITY STORE ===
+    activityStore.currentQuestionIndex = 0;
+    activityStore.userResponses = [];
+    activityStore.answeredQuestions.clear();
+    console.log("✓ Activity store reset");
+
+    // === 4. RESETEAR FLAGS LOCALES ===
+    lessonEnded = false;
+    hintUsedForCurrentQuestion = false;
+    waitingMessageId = null;
+    questionStartTime = null;
+    console.log("✓ Local flags reset");
+
+    // === 5. RESETEAR STATE MACHINE ===
+    stateMachine.currentState = BotState.INIT;
+    console.log("✓ State machine reset to INIT");
+
+    // === 6. REINICIALIZAR STORAGE ===
+    if (activityStore.currentActivity) {
+      chatStore.initializeStorage(activityStore.currentActivity.id);
+      console.log("✓ Storage reinitialized");
+    }
+
+    // === 7. ESTABLECER PRIMERA PREGUNTA ===
+    const firstQuestion = activityStore.getCurrentQuestion();
+    if (firstQuestion) {
+      chatStore.setCurrentQuestion(firstQuestion.id);
+      console.log(`✓ Set current question to: ${firstQuestion.id}`);
+    }
+
+    // === 8. INICIAR LECCIÓN FRESCA (sin cargar estado anterior) ===
+    stateMachine.transition(BotState.READY_CHECK);
+    const greeting = getRandomGreeting();
+    addMessage("greeting", greeting);
+
+    stateMachine.transition(BotState.ASK);
+
+    // CAMBIO CRÍTICO: No llamar askQuestion() que intenta cargar estado
+    // En su lugar, mostrar la pregunta directamente
+    if (firstQuestion) {
+      addMessage("assistant", firstQuestion.question);
+      questionStartTime = Date.now();
+    }
+
+    // === 9. ACTUALIZAR UI ===
+    updateUI();
+
+    console.log("🔄 LESSON RESET COMPLETE");
+  }
+  // DEPRECATED: Skip functionality removed
+  // function skipQuestion() { ... }
+
+  function showHint() {
+    // Guard: solo permitir hint en estado ASK
+    if (!canPerformAction("show hint", [BotState.ASK])) {
+      return;
+    }
+
+    const question = activityStore.getCurrentQuestion();
+    if (question && question.hint) {
+      addMessage("hint", question.hint);
+      hintUsedForCurrentQuestion = true;
+      updateUI();
+    }
+  }
+
+  function askQuestion() {
+    const question = activityStore.getCurrentQuestion();
+    if (question) {
+      // NUEVO: Verificar si hay estado guardado
+      const savedState = chatStore.loadQuestionFromStorage(question.id);
+
+      if (savedState && savedState.completed) {
+        // Si hay estado guardado y está completada, restaurar todo
+        console.log("Restoring saved question state");
+        loadQuestionState(question.id);
+      } else {
+        // Si no hay estado o no está completada, mostrar pregunta fresca
+        addMessage("assistant", question.question);
+        hintUsedForCurrentQuestion = false;
+        questionStartTime = Date.now();
+      }
+    }
+  }
+
+  function addMessage(type: Message["type"], content: string): Message {
+    const chatContainer = document.querySelector(".chat-container");
+    const shouldScroll = chatContainer
+      ? chatContainer.scrollTop + chatContainer.clientHeight >=
+        chatContainer.scrollHeight - 50
+      : true;
+
+    const message: Message = {
+      id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // ID único
+      type,
+      content,
+      timestamp: new Date(),
+    };
+    chatStore.addMessage(message);
+    renderMessages();
+
+    // Solo hacer scroll si el usuario estaba cerca del final (dentro de 50px)
+    if (shouldScroll) {
+      scrollToBottom();
+    }
+
+    return message;
+  }
+
+  function renderMessages() {
+    try {
+      const messagesContainer = document.getElementById("chat-messages");
+      if (!messagesContainer) {
+        console.warn("Messages container not found");
+        return;
+      }
+
+      messagesContainer.innerHTML = "";
+      chatStore.getMessages().forEach((message) => {
+        const bubble = document.createElement("div");
+        const isChat = message.type === "assistant" || message.type === "user";
+
+        bubble.className = `message-bubble ${isChat ? "message-chat" : ""} message-${message.type}`;
+        bubble.setAttribute("data-message-id", message.id);
+
+        const content = document.createElement("div");
+        content.className = "content";
+
+        if (message.type === "feedback") {
+          content.innerHTML = message.content;
+        } else {
+          content.textContent = message.content;
+        }
+
+        bubble.appendChild(content);
+        messagesContainer.appendChild(bubble);
+      });
+
+      // Auto-scroll
+      const chatContainer = messagesContainer.parentElement;
+      if (chatContainer) {
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 0);
+      }
+    } catch (error) {
+      console.error("Error rendering messages:", error);
+    }
+  }
+
+  function scrollToBottom() {
+    const chatContainer = document.querySelector(".chat-container");
+    if (chatContainer) {
+      // Usar requestAnimationFrame para mejor timing
+      requestAnimationFrame(() => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      });
+    }
+  }
+
+  const greetings = [
+    "Hello! Let's start the lesson.",
+    "Hi there! Ready to learn?",
+    "Welcome! Let's begin.",
+  ];
+
+  function getRandomGreeting() {
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }
+
+  function canPerformAction(
+    action: string,
+    allowedStates: BotState[]
+  ): boolean {
+    const isAllowed = allowedStates.includes(stateMachine.currentState);
+
+    if (!isAllowed) {
+      console.warn(
+        `⚠️ Cannot perform "${action}" in state ${stateMachine.currentState}. ` +
+          `Allowed states: ${allowedStates.join(", ")}`
+      );
+    }
+
+    return isAllowed;
+  }
+
+  function updateUI() {
+    console.log("=== updateUI called ===");
+    console.log("State:", stateMachine.currentState);
+    console.log("Question index:", activityStore.currentQuestionIndex);
+    console.log("Lesson ended:", lessonEnded);
+
+    const currentQuestion = activityStore.getCurrentQuestion();
+    const isQuestionAnswered = currentQuestion
+      ? activityStore.isQuestionAnswered(currentQuestion.id)
+      : false;
+
+    console.log("Current question:", currentQuestion?.id);
+    console.log("Is answered:", isQuestionAnswered);
+
+    // === CONTROLES DE INPUT ===
+    const input = document.querySelector(
+      ".text-input-container textarea"
+    ) as HTMLTextAreaElement;
+    const sendBtn = document.querySelector(
+      ".text-input-container button"
+    ) as HTMLButtonElement;
+    const clearBtn = document.getElementById(
+      "clear-button"
+    ) as HTMLButtonElement;
+
+    const inputDisabled =
+      stateMachine.currentState === BotState.INIT ||
+      stateMachine.currentState === BotState.FEEDBACK ||
+      lessonEnded;
+
+    if (input) input.disabled = inputDisabled;
+    if (sendBtn) sendBtn.disabled = inputDisabled;
+    if (clearBtn) clearBtn.disabled = inputDisabled;
+
+    // === BOTÓN RESET ===
+    const resetBtn = document.querySelector(
+      ".lesson-controls button:first-child"
+    ) as HTMLButtonElement;
+    if (resetBtn) {
+      resetBtn.disabled = stateMachine.currentState === BotState.INIT;
+    }
+
+    // === BOTÓN TRY AGAIN ===
+    const tryAgainBtn = document.querySelector(
+      ".lesson-controls button:nth-child(2)"
+    ) as HTMLButtonElement;
+    if (tryAgainBtn) {
+      // Try Again se habilita solo en ASK o FEEDBACK (cuando hay algo que reintentar)
+      const tryAgainEnabled =
+        (stateMachine.currentState === BotState.ASK ||
+          stateMachine.currentState === BotState.FEEDBACK) &&
+        !lessonEnded;
+
+      tryAgainBtn.disabled = !tryAgainEnabled;
+    }
+
+    // === BOTÓN HINT ===
+    const hintBtn = document.querySelector(
+      ".lesson-controls button:nth-child(3)"
+    ) as HTMLButtonElement;
+    const hasHint = currentQuestion ? !!currentQuestion.hint : false;
+
+    if (hintBtn) {
+      const hintDisabled =
+        stateMachine.currentState !== BotState.ASK ||
+        !hasHint ||
+        hintUsedForCurrentQuestion ||
+        lessonEnded;
+
+      hintBtn.disabled = hintDisabled;
+    }
+
+    // === BOTÓN SPEECH TO TEXT ===
+    const speechButton = document.getElementById(
+      "speech-button"
+    ) as HTMLButtonElement;
+    if (speechButton) {
+      speechButton.disabled = inputDisabled;
+    }
+
+    // === NAVEGACIÓN BACK/NEXT ===
+    const canGoBack = activityStore.currentQuestionIndex > 0 && !lessonEnded;
+    const canGoNext =
+      isQuestionAnswered &&
+      stateMachine.currentState === BotState.FEEDBACK &&
+      !lessonEnded;
+
+    console.log("Can go back:", canGoBack);
+    console.log("Can go next:", canGoNext);
+
+    // Llamar función global del ProgressBar
+    if ((window as any).updateNavigationButtons) {
+      (window as any).updateNavigationButtons(canGoBack, canGoNext);
+    }
+
+    // === PROGRESS BAR ===
+    updateProgressBar();
+
+    console.log("=== updateUI complete ===");
+  }
+
+  function updateProgressBar() {
+    const current =
+      stateMachine.currentState === BotState.INIT
+        ? 0
+        : activityStore.currentQuestionIndex + 1;
+    const total = activityStore.currentActivity
+      ? activityStore.currentActivity.questions.length
+      : 0;
+    const textEl = document.querySelector(".progress-text");
+    const fillEl = document.querySelector(".progress-fill");
+    if (textEl) textEl.textContent = `Question ${current} of ${total}`;
+    if (fillEl)
+      (fillEl as HTMLElement).style.width =
+        `${total > 0 ? (current / total) * 100 : 0}%`;
+  }
+
+  function handleUserInput() {
+    // Guard: solo permitir input en estado ASK
+    if (!canPerformAction("send message", [BotState.ASK])) {
+      return;
+    }
+
+    const input = document.querySelector(
+      ".text-input-container textarea"
+    ) as HTMLTextAreaElement;
+    if (input) {
+      const userMessage = input.value.trim();
+      if (userMessage) {
+        addMessage("user", userMessage);
+        input.value = "";
+        processUserInput(userMessage);
+      }
+    }
+  }
+
+  function handleClearInput() {
+    const input = document.querySelector(
+      ".text-input-container textarea"
+    ) as HTMLTextAreaElement;
+    if (input) {
+      input.value = "";
+    }
+  }
+
+  async function processUserInput(message: string) {
+    console.log(
+      `Processing user input: ${message}, current state: ${stateMachine.currentState}`
+    );
+    if (stateMachine.currentState === BotState.ASK) {
+      stateMachine.transition(BotState.LISTEN_INPUT);
+      stateMachine.transition(BotState.EVALUATE);
+      stateMachine.transition(BotState.FEEDBACK);
+
+      // IMPORTANTE: Esperar un tick para asegurar que el mensaje del usuario se renderice
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Agregar mensaje de espera DESPUÉS del mensaje del usuario
+      const waitingMessage: Message = {
+        id: `waiting-${Date.now()}`, // ID único con prefijo
+        type: "waiting",
+        content: "Assistant is thinking",
+        timestamp: new Date(),
+      };
+      chatStore.addMessage(waitingMessage);
+      waitingMessageId = waitingMessage.id;
+      renderMessages();
+
+      // Iniciar animación solo en el mensaje de espera
+      let dots = 0;
+      const animationInterval = setInterval(() => {
+        dots = (dots + 1) % 4;
+        const dotsText = ".".repeat(dots);
+        const messageEl = document.querySelector(
+          `[data-message-id="${waitingMessageId}"] .content`
+        );
+        if (messageEl) {
+          messageEl.textContent = "Assistant is thinking" + dotsText;
+        }
+      }, 500);
+
+      try {
+        // Calculate time spent
+        const timeSpent = questionStartTime
+          ? Math.floor((Date.now() - questionStartTime) / 1000)
+          : 0;
+
+        // Build activity payload
+        const currentQuestion = activityStore.getCurrentQuestion();
+        const activityPayload = {
+          ACTIVITY_TITLE: activityStore.currentActivity?.title || "",
+          ACTIVITY_LEVEL: activityStore.currentActivity?.level || "",
+          ACTIVITY_CONTEXT:
+            activityStore.currentActivity?.activityContext || "",
+          ACTIVITY_DESCRIPTION:
+            activityStore.currentActivity?.description || "",
+          QUESTION_ID: currentQuestion?.id || "",
+          QUESTION_TEXT: currentQuestion?.question || "",
+          QUESTION_TYPE: currentQuestion?.type || "",
+          EVALUATE_POINTS: currentQuestion?.evaluatePoints.join(", ") || "",
+          HINT_TEXT: currentQuestion?.hint || "",
+          USER_INPUT: message,
+          HINT_USED: hintUsedForCurrentQuestion,
+          TIME_SPENT: timeSpent,
+        };
+
+        // Get feedback from OpenAI
+        const feedback = await openAIService.getFeedback(activityPayload);
+
+        // Limpiar animación y remover mensaje de espera
+        clearInterval(animationInterval);
+        chatStore.removeMessage(waitingMessageId!);
+        waitingMessageId = null;
+        renderMessages(); // IMPORTANTE: renderizar después de remover
+
+        // Agregar feedback
+        let feedbackContent = `<div class="feedback-section">${marked(feedback.feedback)}</div>`;
+        if (feedback.corrections) {
+          feedbackContent += `<hr><div class="corrections-section"><strong>Corrections:</strong><br>${marked(feedback.corrections)}</div>`;
+        }
+        if (feedback.tips) {
+          feedbackContent += `<hr><div class="tips-section"><strong>Tips:</strong><br>${marked(feedback.tips)}</div>`;
+        }
+        addMessage("feedback", feedbackContent);
+
+        stateMachine.transition(BotState.NEXT_PROMPT);
+
+        // Marcar pregunta como respondida
+        const questionForMarking = activityStore.getCurrentQuestion();
+        if (questionForMarking) {
+          activityStore.markQuestionAsAnswered(questionForMarking.id);
+          console.log(`Question ${questionForMarking.id} marked as answered`);
+        }
+
+        // Guardar estado en localStorage
+        saveCurrentQuestionState();
+
+        // Transicionar a FEEDBACK pero NO avanzar
+        stateMachine.transition(BotState.FEEDBACK);
+
+        // Actualizar UI para habilitar NEXT
+        updateUI();
+
+        console.log("Feedback complete. User must click NEXT to continue.");
+      } catch (error) {
+        console.error("Error getting feedback:", error);
+        clearInterval(animationInterval);
+        chatStore.removeMessage(waitingMessageId!);
+        waitingMessageId = null;
+        renderMessages(); // IMPORTANTE: renderizar después de remover
+
+        // Agregar mensaje de error
+        const errorMessage = addMessage(
+          "error",
+          "Connection error! Please check your internet and try again."
+        );
+
+        // Auto-dismiss error message after 4 seconds
+        setTimeout(() => {
+          chatStore.removeMessage(errorMessage.id);
+          renderMessages();
+          updateUI(); // Re-enable controls after error message is dismissed
+        }, 4000);
+
+        // Return to waiting state (follow proper state flow)
+        stateMachine.transition(BotState.NEXT_PROMPT);
+        stateMachine.transition(BotState.ASK);
+        hintUsedForCurrentQuestion = false; // Reset hint usage for retry
+        updateUI();
+      }
+    }
+  }
+
+  function saveCurrentQuestionState() {
+    const currentQuestion = activityStore.getCurrentQuestion();
+    if (!currentQuestion) {
+      console.warn("Cannot save: no current question");
+      return;
+    }
+
+    // Obtener todos los mensajes de la pregunta actual
+    const messages = chatStore.getMessages();
+
+    // Extraer respuesta del usuario (último mensaje de tipo 'user')
+    const userMessage = messages
+      .slice()
+      .reverse()
+      .find((msg) => msg.type === "user");
+    const userResponse = userMessage ? userMessage.content : "";
+
+    // Extraer feedback (último mensaje de tipo 'feedback')
+    const feedbackMessage = messages
+      .slice()
+      .reverse()
+      .find((msg) => msg.type === "feedback");
+    const feedback = feedbackMessage ? feedbackMessage.content : "";
+
+    const questionData = {
+      questionId: currentQuestion.id,
+      userResponse,
+      feedback,
+      hintUsed: hintUsedForCurrentQuestion,
+      timestamp: Date.now(),
+      completed: !!feedback, // Si hay feedback, está completada
+    };
+
+    chatStore.saveQuestionToStorage(currentQuestion.id, questionData);
+    console.log(
+      `Saved state for question ${currentQuestion.id}:`,
+      questionData
+    );
+  }
+
+  function loadQuestionState(questionId: string) {
+    try {
+      console.log(`Loading state for question: ${questionId}`);
+
+      const savedData = chatStore.loadQuestionFromStorage(questionId);
+
+      if (savedData) {
+        // Validar integridad de datos
+        if (
+          typeof savedData.questionId !== "string" ||
+          savedData.questionId !== questionId
+        ) {
+          throw new Error("Data corruption: questionId mismatch");
+        }
+
+        console.log(`Found saved data:`, savedData);
+
+        hintUsedForCurrentQuestion = savedData.hintUsed;
+        clearCurrentChat();
+
+        const question = activityStore.getCurrentQuestion();
+        if (question) {
+          addMessage("assistant", question.question);
+        }
+
+        if (savedData.userResponse) {
+          addMessage("user", savedData.userResponse);
+        }
+
+        if (savedData.feedback) {
+          addMessage("feedback", savedData.feedback);
+        }
+
+        console.log(`Restored question state for ${questionId}`);
+      } else {
+        console.log(
+          `No saved data for question ${questionId}, showing fresh question`
+        );
+        clearCurrentChat();
+        askQuestion();
+      }
+    } catch (error) {
+      console.error("Error loading question state:", error);
+      // Fallback: mostrar pregunta fresca
+      clearCurrentChat();
+      askQuestion();
+    }
+  }
+
+  function clearCurrentChat() {
+    console.log("Clearing current chat display");
+    chatStore.clearMessages(); // Esto limpia solo la pregunta actual
+    renderMessages(); // Actualizar la vista
+  }
+
+  function handleBackNavigation() {
+    try {
+      console.log("handleBackNavigation called");
+
+      // Guard: solo permitir navegación en ASK o FEEDBACK
+      if (
+        !canPerformAction("navigate back", [BotState.ASK, BotState.FEEDBACK])
+      ) {
+        return;
+      }
+
+      // Guard: no permitir si estamos en la primera pregunta
+      if (activityStore.currentQuestionIndex === 0) {
+        console.warn("⚠️ Already at first question");
+        return;
+      }
+
+      // Guardar estado actual antes de navegar
+      saveCurrentQuestionState();
+
+      // Retroceder índice
+      activityStore.currentQuestionIndex--;
+      console.log(
+        `Navigated back to question index: ${activityStore.currentQuestionIndex}`
+      );
+
+      // Establecer pregunta actual en ChatStore
+      const question = activityStore.getCurrentQuestion();
+      if (question) {
+        chatStore.setCurrentQuestion(question.id);
+      }
+
+      // Cargar estado de la pregunta anterior
+      if (question) {
+        loadQuestionState(question.id);
+      }
+
+      // Actualizar state machine: establecer estado correcto según si está respondida
+      const isAnswered = question
+        ? activityStore.isQuestionAnswered(question.id)
+        : false;
+      stateMachine.currentState = isAnswered ? BotState.FEEDBACK : BotState.ASK;
+      console.log(
+        `State set to: ${stateMachine.currentState} (answered: ${isAnswered})`
+      );
+
+      // Actualizar UI
+      updateUI();
+    } catch (error) {
+      console.error("Error in handleBackNavigation:", error);
+      // Intentar recuperar estado consistente
+      updateUI();
+    }
+  }
+
+  function handleNextNavigation() {
+    try {
+      console.log("handleNextNavigation called");
+
+      // Guard: solo permitir navegación en FEEDBACK
+      if (!canPerformAction("navigate next", [BotState.FEEDBACK])) {
+        return;
+      }
+
+      const currentQuestion = activityStore.getCurrentQuestion();
+
+      // Guard: verificar que la pregunta esté respondida
+      if (
+        !currentQuestion ||
+        !activityStore.isQuestionAnswered(currentQuestion.id)
+      ) {
+        console.warn("⚠️ Cannot go next: current question not answered");
+        return;
+      }
+
+      // Guardar estado actual
+      saveCurrentQuestionState();
+
+      // Avanzar índice
+      if (activityStore.nextQuestion()) {
+        console.log(
+          `Navigated to question index: ${activityStore.currentQuestionIndex}`
+        );
+
+        const nextQuestion = activityStore.getCurrentQuestion();
+        if (nextQuestion) {
+          // Establecer pregunta actual en ChatStore
+          chatStore.setCurrentQuestion(nextQuestion.id);
+
+          // Verificar si la siguiente pregunta ya está respondida
+          const isNextQuestionAnswered = activityStore.isQuestionAnswered(
+            nextQuestion.id
+          );
+
+          // Cargar estado (si existe) o mostrar pregunta nueva
+          loadQuestionState(nextQuestion.id);
+
+          // Actualizar state machine según si está respondida o no
+          if (isNextQuestionAnswered) {
+            // Si ya está respondida, ir directo a FEEDBACK
+            stateMachine.currentState = BotState.FEEDBACK;
+            console.log(
+              `Next question already answered, state set to FEEDBACK`
+            );
+          } else {
+            // Si es nueva, seguir flujo normal
+            stateMachine.transition(BotState.NEXT_PROMPT);
+            stateMachine.transition(BotState.ASK);
+            console.log(`New question, state set to ASK`);
+          }
+        }
+      } else {
+        // No hay más preguntas, terminar lección
+        console.log("No more questions, ending lesson");
+        lessonEnded = true;
+        addMessage("assistant", "No more questions, ending lesson");
+        stateMachine.transition(BotState.SUMMARY);
+      }
+
+      // Actualizar UI
+      updateUI();
+    } catch (error) {
+      console.error("Error in handleNextNavigation:", error);
+      // Intentar recuperar estado consistente
+      updateUI();
+    }
+  }
+
+  function handleTryAgain() {
+    console.log("Try Again clicked");
+
+    if (!canPerformAction("try again", [BotState.ASK, BotState.FEEDBACK])) {
+      return;
+    }
+
+    const currentQuestion = activityStore.getCurrentQuestion();
+    if (!currentQuestion) {
+      console.warn("No current question to retry");
+      return;
+    }
+
+    console.log(`Retrying question: ${currentQuestion.id}`);
+
+    // 1. Resetear flags
+    hintUsedForCurrentQuestion = false;
+    activityStore.resetCurrentQuestion();
+    questionStartTime = Date.now();
+
+    // 2. Limpiar solo respuesta, feedback y hint (mantener la pregunta)
+    const messages = chatStore.getMessages();
+    const questionMessage = messages.find(
+      (msg) =>
+        msg.type === "assistant" && msg.content === currentQuestion.question
+    );
+
+    // Limpiar todos los mensajes
+    chatStore.clearMessages();
+
+    // Restaurar solo el mensaje de la pregunta
+    if (questionMessage) {
+      chatStore.addMessage(questionMessage);
+    } else {
+      // Si no encontramos el mensaje original, crear uno nuevo
+      addMessage("assistant", currentQuestion.question);
+    }
+
+    renderMessages();
+
+    // 3. Volver a ASK
+    stateMachine.currentState = BotState.ASK;
+
+    // 4. Actualizar UI
+    updateUI();
+
+    console.log("Question reset for retry. Chat cleared except question.");
+  }
+</script>
+
+<style is:global>
+  .bot-lesson {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+  }
+
+  .chat-container {
+    min-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .iniciar-btn {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    border-radius: 100%;
+    transform: translate(-50%, -50%);
+    background-color: var(--primary-color, #007bff);
+    aspect-ratio: 1 / 1 !important;
+    color: white;
+    border: none;
+    padding: 1rem;
+    cursor: pointer;
+    align-self: flex-start;
+    font-weight: bold;
+  }
+
+  .iniciar-btn:hover {
+    background-color: #0056b3;
+  }
+
+  .message-bubble {
+    margin: var(--spacing-sm) 0;
+    display: flex;
+  }
+
+  .message-greeting {
+    justify-content: flex-start;
+  }
+
+  .message-assistant {
+    justify-content: flex-start;
+  }
+
+  .message-user {
+    justify-content: flex-end;
+  }
+
+  .message-hint {
+    justify-content: center;
+  }
+
+  .message-feedback {
+    justify-content: flex-start;
+  }
+
+  .content {
+    max-width: 70%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    word-wrap: break-word;
+  }
+
+  .message-greeting .content {
+    background-color: #7cec87;
+    color: var(--dark-color);
+    font-weight: bold;
+  }
+
+  .message-assistant .content {
+    background-color: #e0e0e0;
+    color: var(--dark-color);
+  }
+
+  .message-user .content {
+    background-color: var(--primary-color);
+    color: white;
+  }
+
+  .message-hint .content {
+    background-color: var(--warning-color);
+    color: var(--dark-color);
+    font-style: italic;
+  }
+
+  .message-feedback .content {
+    background-color: #7cec87;
+    color: var(--dark-color);
+  }
+
+  .message-waiting {
+    justify-content: flex-start;
+  }
+
+  .message-waiting .content {
+    background-color: lightgray;
+    color: var(--dark-color);
+    font-style: italic;
+  }
+
+  .message-error {
+    justify-content: center;
+  }
+
+  .message-error .content {
+    background-color: #ff4444;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+  }
+</style>

@@ -1,0 +1,25 @@
+---
+import Button from "./Button.astro";
+
+interface Props {
+  hintDisabled?: boolean;
+  tryAgainDisabled?: boolean;
+}
+
+const { hintDisabled = false, tryAgainDisabled = false } = Astro.props;
+---
+
+<div class="lesson-controls">
+  <Button variant="secondary" type="button">Reset</Button>
+  <Button variant="warning" type="button" disabled={tryAgainDisabled}>Try Again</Button>
+  <Button variant="warning" type="button" disabled={hintDisabled}>Hint</Button>
+</div>
+
+<style>
+  .lesson-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    margin: var(--spacing-md) 0;
+  }
+</style>

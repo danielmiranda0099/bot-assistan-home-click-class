@@ -1,0 +1,137 @@
+{
+  "id": "activity-2",
+  "title": "Simple English Questions",
+  "description": "Answer basic questions in English",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "text",
+      "prompt": {
+        "text": "What is your name?",
+        "context": "Personal introduction"
+      },
+      "expectedAnswer": {
+        "keywords": ["my name is", "i am"],
+        "alternatives": ["name", "called"],
+        "modelAnswer": "My name is [Name]."
+      },
+      "hints": [],
+      "scoring": {
+        "maxScore": 10,
+        "passingScore": 7,
+        "criteriaWeights": {
+          "semantic": 0.5,
+          "grammar": 0.3,
+          "vocabulary": 0.2
+        }
+      },
+      "maxAttempts": 3,
+      "timeLimit": 30
+    },
+    {
+      "id": "q2",
+      "type": "text",
+      "prompt": {
+        "text": "Where are you from?",
+        "context": "Origin question"
+      },
+      "expectedAnswer": {
+        "keywords": ["from", "i am from"],
+        "alternatives": ["born in", "live in"],
+        "modelAnswer": "I am from [Place]."
+      },
+      "hints": [],
+      "scoring": {
+        "maxScore": 10,
+        "passingScore": 7,
+        "criteriaWeights": {
+          "semantic": 0.5,
+          "grammar": 0.3,
+          "vocabulary": 0.2
+        }
+      },
+      "maxAttempts": 3,
+      "timeLimit": 30
+    },
+    {
+      "id": "q3",
+      "type": "text",
+      "prompt": {
+        "text": "What is your favorite food?",
+        "context": "Personal preference"
+      },
+      "expectedAnswer": {
+        "keywords": ["favorite food", "like to eat"],
+        "alternatives": ["love", "enjoy"],
+        "modelAnswer": "My favorite food is [Food]."
+      },
+      "hints": [],
+      "scoring": {
+        "maxScore": 10,
+        "passingScore": 7,
+        "criteriaWeights": {
+          "semantic": 0.5,
+          "grammar": 0.3,
+          "vocabulary": 0.2
+        }
+      },
+      "maxAttempts": 3,
+      "timeLimit": 30
+    },
+    {
+      "id": "q4",
+      "type": "text",
+      "prompt": {
+        "text": "Do you have any hobbies?",
+        "context": "Leisure activities"
+      },
+      "expectedAnswer": {
+        "keywords": ["hobbies", "like to do"],
+        "alternatives": ["enjoy", "spend time"],
+        "modelAnswer": "Yes, I like [Hobby]."
+      },
+      "hints": [],
+      "scoring": {
+        "maxScore": 10,
+        "passingScore": 7,
+        "criteriaWeights": {
+          "semantic": 0.5,
+          "grammar": 0.3,
+          "vocabulary": 0.2
+        }
+      },
+      "maxAttempts": 3,
+      "timeLimit": 30
+    },
+    {
+      "id": "q5",
+      "type": "text",
+      "prompt": {
+        "text": "What is the weather like today?",
+        "context": "Weather description"
+      },
+      "expectedAnswer": {
+        "keywords": ["sunny", "rainy", "cloudy", "hot", "cold"],
+        "alternatives": ["nice", "bad"],
+        "modelAnswer": "It's [Weather]."
+      },
+      "hints": [],
+      "scoring": {
+        "maxScore": 10,
+        "passingScore": 7,
+        "criteriaWeights": {
+          "semantic": 0.5,
+          "grammar": 0.3,
+          "vocabulary": 0.2
+        }
+      },
+      "maxAttempts": 3,
+      "timeLimit": 30
+    }
+  ],
+  "metadata": {
+    "duration": 3,
+    "difficulty": "beginner",
+    "tags": ["personal", "basic"]
+  }
+}

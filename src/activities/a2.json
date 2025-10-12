@@ -1,0 +1,61 @@
+{
+  "id": "activity-4",
+  "title": "Lost in the School Hallway",
+  "description": "Practice asking for help, giving directions, and using polite expressions in a school setting.",
+  "activityContext": "It is your first week at a new school. The bell rings, and you need to go to the library, but you don’t know where it is. You walk into the hallway and see another student carrying some books. You decide to ask for help. The student is friendly and gives you directions. You thank them and continue walking. Before you leave, you introduce yourself and learn their name.",
+  "level": "A2",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "text",
+      "question": "You are standing in the hallway and you don’t know where the library is. What polite question can you ask the student with books?",
+      "hint": "Start with 'Excuse me, can you tell me...?'",
+      "evaluatePoints": [
+        "Polite opening (Excuse me)",
+        "Correct question form",
+        "Context relevance (library)"
+      ]
+    },
+    {
+      "id": "q2",
+      "type": "text",
+      "question": "The student says: 'Yes, of course. Go straight, then turn left. The library is next to the science lab.' What could you say to show that you understood and to thank them?",
+      "hint": "Repeat part of the direction and say 'Thank you'.",
+      "evaluatePoints": [
+        "Acknowledges directions",
+        "Polite response",
+        "Shows comprehension"
+      ]
+    },
+    {
+      "id": "q3",
+      "type": "text",
+      "question": "Before leaving, you want to introduce yourself. What could you say?",
+      "hint": "Use 'My name is...' or 'I’m...'",
+      "evaluatePoints": [
+        "Clear self-introduction",
+        "Full sentence",
+        "Polite tone"
+      ]
+    },
+    {
+      "id": "q4",
+      "type": "text",
+      "question": "The student smiles and says: 'Nice to meet you! My name is Tom.' How could you politely respond?",
+      "hint": "Think of 'Nice to meet you too.'",
+      "evaluatePoints": ["Appropriate social response", "Friendly tone"]
+    },
+    {
+      "id": "q5",
+      "type": "text",
+      "question": "Finally, you want to leave for the library. What polite farewell could you use before walking away?",
+      "hint": "Use 'Goodbye' or 'See you later.'",
+      "evaluatePoints": ["Correct farewell expression", "Polite closing"]
+    }
+  ],
+  "metadata": {
+    "duration": 12,
+    "difficulty": "elementary",
+    "tags": ["directions", "introductions", "school", "A2", "story-based"]
+  }
+}

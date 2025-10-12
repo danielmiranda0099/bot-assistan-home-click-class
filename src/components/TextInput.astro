@@ -1,0 +1,35 @@
+---
+// TextInput.astro
+import Input from "./Input.astro";
+import Button from "./Button.astro";
+
+interface Props {
+  placeholder?: string;
+  buttonText?: string;
+}
+
+const { placeholder = "Type your message...", buttonText = "Send" } =
+  Astro.props;
+---
+
+<div class="text-input-container">
+  <Input type="textarea" rows={3} placeholder={placeholder} />
+  <Button variant="primary" type="submit">{buttonText}</Button>
+  <Button variant="secondary" type="button" id="clear-button">Clear</Button>
+</div>
+
+<style>
+  .text-input-container {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: flex-start;
+  }
+
+  .text-input-container :global(.input) {
+    flex: 1;
+  }
+
+  .text-input-container button {
+    margin-top: auto;
+  }
+</style>

@@ -1,0 +1,47 @@
+{
+  "id": "activity-6",
+  "title": "Simple Questions",
+  "description": "Practicamos responder preguntas muy básicas de presentación y datos personales.",
+  "activityContext": "",
+  "level": "A1",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "text",
+      "question": "Where are you from?",
+      "hint": "Say your country or city.",
+      "evaluatePoints": [
+        "Responde con un lugar correcto.",
+        "Usa una frase corta y clara.",
+        "Mantiene coherencia con la pregunta."
+      ]
+    },
+    {
+      "id": "q2",
+      "type": "text",
+      "question": "How old are you?",
+      "hint": "Use a number.",
+      "evaluatePoints": [
+        "Indica la edad con número.",
+        "Responde con estructura simple (ejemplo: 'I am 20.').",
+        "Frase clara y completa."
+      ]
+    },
+    {
+      "id": "q3",
+      "type": "text",
+      "question": "What is your favorite color?",
+      "hint": "Think of simple colors: red, blue, green.",
+      "evaluatePoints": [
+        "Nombra un color común.",
+        "Usa frase simple (ejemplo: 'My favorite color is...').",
+        "Respuesta clara y coherente."
+      ]
+    }
+  ],
+  "metadata": {
+    "duration": 5,
+    "difficulty": "elementary",
+    "tags": ["basic questions", "introductions", "personal information"]
+  }
+}

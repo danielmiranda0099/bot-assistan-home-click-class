@@ -1,0 +1,78 @@
+---
+// MessageBubble.astro
+interface Props {
+  type: "assistant" | "user" | "hint" | "feedback" | "greeting";
+  content: string;
+}
+
+const { type, content } = Astro.props;
+---
+
+<div
+  class={`message-bubble ${type === "assistant" || type === "user" ? "message-chat" : ""} message-${type}`}
+>
+  <div class="content">{content}</div>
+</div>
+
+<style>
+  .message-bubble {
+    margin: var(--spacing-sm) 0;
+    display: flex;
+  }
+
+  .message-greeting {
+    justify-content: flex-start;
+  }
+
+  .message-assistant {
+    justify-content: flex-start;
+  }
+
+  .message-user {
+    justify-content: flex-end;
+  }
+
+  .message-hint {
+    justify-content: center;
+  }
+
+  .message-feedback {
+    justify-content: flex-start;
+  }
+
+  .content {
+    max-width: 70%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    word-wrap: break-word;
+  }
+
+  .message-greeting .content {
+    background-color: lightgreen;
+    color: var(--dark-color);
+    font-weight: bold;
+  }
+
+  .message-assistant .content {
+    background-color: #e0e0e0;
+    color: var(--dark-color);
+  }
+
+  .message-user .content {
+    background-color: var(--primary-color);
+    color: white;
+  }
+
+  .message-hint .content {
+    background-color: var(--warning-color);
+    color: var(--dark-color);
+    font-style: italic;
+  }
+
+  .message-feedback .content {
+    background-color: yellow;
+    color: var(--dark-color);
+  }
+</style>
