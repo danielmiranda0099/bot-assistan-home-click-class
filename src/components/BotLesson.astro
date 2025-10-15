@@ -109,6 +109,34 @@ import SummaryModal from "./SummaryModal.astro";
   });
 
   function startLesson() {
+    // Detect and clear corrupted localStorage data where counters are null or duplicates exist
+    if (activityStore.currentActivity) {
+      const activityId = activityStore.currentActivity.id;
+      const key = `activity-feedback-${activityId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          let reason = '';
+          if (parsed.correct === null || parsed.partial === null || parsed.incorrect === null || parsed.answeredQuestions === null) {
+            reason += 'null counters; ';
+          }
+          const questionIds = parsed.questionsFeedback?.map((f: any) => f.questionId) || [];
+          const uniqueIds = new Set(questionIds);
+          if (questionIds.length !== uniqueIds.size) {
+            reason += 'duplicates in questionsFeedback; ';
+          }
+          if (reason) {
+            localStorage.removeItem(key);
+            console.log(`Cleared corrupted feedback data for activity ${activityId}: ${reason.trim()}`);
+          }
+        } catch (error) {
+          localStorage.removeItem(key);
+          console.log('Cleared invalid feedback data for activity:', activityId);
+        }
+      }
+    }
+
     // Hide the iniciar button before starting
     const iniciarBtn = document.getElementById(
       "iniciar-btn"
@@ -168,6 +196,9 @@ import SummaryModal from "./SummaryModal.astro";
         questionsFeedback: [],
         totalQuestions: activityStore.currentActivity.questions.length,
         answeredQuestions: 0,
+        correct: 0,
+        partial: 0,
+        incorrect: 0,
       };
     }
     console.log("✓ Feedback cleared and accumulator reinitialized");
@@ -233,41 +264,98 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   function handleShowSummary() {
-    console.log("Show Summary clicked");
+    console.log("=== handleShowSummary: Show Summary clicked ===");
+    console.log("Current state machine state:", stateMachine.currentState);
+    console.log("Lesson ended flag:", lessonEnded);
+    console.log("Current question index:", activityStore.currentQuestionIndex);
+    console.log("Total questions:", activityStore.currentActivity?.questions.length || 0);
 
     // Guard: solo permitir en FEEDBACK cuando es la última pregunta
     if (!canPerformAction("show summary", [BotState.FEEDBACK])) {
+      console.warn("❌ Cannot show summary: Invalid state. Current state:", stateMachine.currentState, "Allowed states: [BotState.FEEDBACK]");
       return;
     }
+    console.log("✅ State validation passed");
 
-    if (!isLastQuestion()) {
-      console.warn("Cannot show summary: not on last question");
+    const isLast = isLastQuestion();
+    console.log("Is last question:", isLast);
+    if (!isLast) {
+      console.warn("❌ Cannot show summary: Not on last question. Current index:", activityStore.currentQuestionIndex, "Total questions:", activityStore.currentActivity?.questions.length || 0);
       return;
     }
+    console.log("✅ Last question validation passed");
 
     const currentQuestion = activityStore.getCurrentQuestion();
-    if (
-      !currentQuestion ||
-      !activityStore.isQuestionAnswered(currentQuestion.id)
-    ) {
-      console.warn("Cannot show summary: last question not answered");
+    console.log("Current question:", currentQuestion ? { id: currentQuestion.id, question: currentQuestion.question.substring(0, 50) + "..." } : "null");
+
+    if (!currentQuestion) {
+      console.warn("❌ Cannot show summary: No current question available");
       return;
     }
+
+    const isAnswered = activityStore.isQuestionAnswered(currentQuestion.id);
+    console.log("Is current question answered:", isAnswered);
+
+    if (!isAnswered) {
+      console.warn("❌ Cannot show summary: Last question not answered. Question ID:", currentQuestion.id);
+      return;
+    }
+    console.log("✅ Question answered validation passed");
 
     // Validation: ensure accumulator exists and activity is complete
     const accumulator = activityStore.getFeedbackAccumulator();
-    if (!accumulator) {
-      console.warn("Cannot show summary: no feedback accumulator");
-      return;
-    }
-    if (!activityStore.isActivityComplete()) {
-      console.warn("Cannot show summary: activity not complete");
-      return;
+    console.log("Feedback accumulator exists:", !!accumulator);
+    if (accumulator) {
+      console.log("Accumulator details:", {
+        activityId: accumulator.activityId,
+        totalQuestions: accumulator.totalQuestions,
+        answeredQuestions: accumulator.answeredQuestions,
+        correct: accumulator.correct,
+        partial: accumulator.partial,
+        incorrect: accumulator.incorrect,
+        questionsFeedbackCount: accumulator.questionsFeedback.length
+      });
     }
 
-    // Abrir el modal
-    if ((window as any).openSummaryModal) {
-      (window as any).openSummaryModal();
+    if (!accumulator) {
+      console.warn("❌ Cannot show summary: No feedback accumulator available");
+      return;
+    }
+    console.log("✅ Accumulator existence validation passed");
+
+    const isComplete = activityStore.isActivityComplete();
+    console.log("Is activity complete:", isComplete);
+    if (!isComplete) {
+      console.warn("❌ Cannot show summary: Activity not complete. Answered questions:", accumulator.answeredQuestions, "Total questions:", accumulator.totalQuestions);
+      return;
+    }
+    console.log("✅ Activity completion validation passed");
+
+    // Check if modal function exists
+    const openModalFunction = (window as any).openSummaryModal;
+    console.log("openSummaryModal function exists on window:", !!openModalFunction);
+    if (!openModalFunction) {
+      console.warn("❌ Cannot show summary: openSummaryModal function not found on window");
+      return;
+    }
+    console.log("✅ Modal function availability validation passed");
+
+    // Check if modal element exists
+    const modalElement = document.getElementById("summary-modal");
+    console.log("Summary modal element exists in DOM:", !!modalElement);
+    if (!modalElement) {
+      console.warn("❌ Cannot show summary: Summary modal element not found in DOM");
+      return;
+    }
+    console.log("✅ Modal element existence validation passed");
+
+    // Attempt to open the modal
+    try {
+      console.log("🔄 Attempting to open summary modal...");
+      openModalFunction();
+      console.log("✅ Summary modal opened successfully");
+    } catch (error) {
+      console.error("❌ Error opening summary modal:", error);
     }
   }
 
@@ -995,6 +1083,9 @@ import SummaryModal from "./SummaryModal.astro";
 
   // Export debug function to window for debugging
   (window as any).debugFeedbackAccumulator = debugFeedbackAccumulator;
+
+  // Export activityStore to window for SummaryModal access
+  (window as any).activityStore = activityStore;
 </script>
 
 <style is:global>

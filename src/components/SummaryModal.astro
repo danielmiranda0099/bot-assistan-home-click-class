@@ -403,6 +403,40 @@
     });
   });
 
+  function updateSummaryWithFeedback() {
+    // Get the activityStore from window
+    const activityStore = (window as any).activityStore;
+    if (!activityStore) {
+      console.error('ActivityStore not found on window');
+      return;
+    }
+
+    // Retrieve the feedback accumulator
+    const feedbackAccumulator = activityStore.getFeedbackAccumulator();
+    if (!feedbackAccumulator) {
+      console.error('No feedback accumulator available');
+      return;
+    }
+
+    // Update DOM elements with counter values
+    const correctElement = document.getElementById('correct-count');
+    const partialElement = document.getElementById('partial-count');
+    const incorrectElement = document.getElementById('incorrect-count');
+
+    if (correctElement) {
+      correctElement.textContent = feedbackAccumulator.correct.toString();
+      console.log(`Updated correct count to: ${feedbackAccumulator.correct}`);
+    }
+    if (partialElement) {
+      partialElement.textContent = feedbackAccumulator.partial.toString();
+      console.log(`Updated partial count to: ${feedbackAccumulator.partial}`);
+    }
+    if (incorrectElement) {
+      incorrectElement.textContent = feedbackAccumulator.incorrect.toString();
+      console.log(`Updated incorrect count to: ${feedbackAccumulator.incorrect}`);
+    }
+  }
+
   function closeModal() {
     const modal = document.getElementById("summary-modal");
     modal?.classList.remove("active");
@@ -411,6 +445,7 @@
   function openModal() {
     const modal = document.getElementById("summary-modal");
     modal?.classList.add("active");
+    updateSummaryWithFeedback();
   }
 
   // Export function for external use

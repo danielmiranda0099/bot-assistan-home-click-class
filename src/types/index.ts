@@ -129,4 +129,7 @@ export interface ActivityFeedbackAccumulator {
   questionsFeedback: QuestionFeedbackData[];
   totalQuestions: number;
   answeredQuestions: number;
+  correct: number;
+  partial: number;
+  incorrect: number;
 }
