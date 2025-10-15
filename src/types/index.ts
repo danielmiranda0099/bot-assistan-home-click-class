@@ -96,3 +96,37 @@ export interface NavigationMetadata {
   totalQuestions: number;
   currentQuestionAnswered: boolean;
 }
+/**
+ * Interface for question feedback data
+ */
+export interface QuestionFeedbackData {
+  questionId: string;
+  questionText: string;
+  userAnswer: string;
+  score: number;
+  decision: string;
+  criteria: {
+    semanticRelevance: number;
+    grammaticalCorrectness: number;
+    vocabularyAppropriate: number;
+    pronunciation: number;
+  };
+  feedback: string;
+  corrections: string | null;
+  tips: string;
+  timestamp: number;
+}
+
+/**
+ * Interface for activity feedback accumulator
+ */
+export interface ActivityFeedbackAccumulator {
+  activityId: string;
+  activityTitle: string;
+  activityLevel: string;
+  activityContext: string;
+  activityDescription: string;
+  questionsFeedback: QuestionFeedbackData[];
+  totalQuestions: number;
+  answeredQuestions: number;
+}

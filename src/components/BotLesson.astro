@@ -30,7 +30,7 @@ import SummaryModal from "./SummaryModal.astro";
     OpenAIService,
     type OpenAIFeedback,
   } from "../stores/OpenAIService.ts";
-  import type { Activity, Message } from "../types/index.ts";
+  import type { Activity, Message, QuestionFeedbackData } from "../types/index.ts";
   // import activityData from "../activities/a2.json";
   import activityData from "../activities/a1.json";
   // import activityData from "../activities/example-activity-no-hints.json";
@@ -133,6 +133,7 @@ import SummaryModal from "./SummaryModal.astro";
     addMessage("greeting", greeting);
     stateMachine.transition(BotState.ASK);
     askQuestion();
+    debugFeedbackAccumulator();
     updateUI();
   }
 
@@ -154,6 +155,22 @@ import SummaryModal from "./SummaryModal.astro";
     activityStore.userResponses = [];
     activityStore.answeredQuestions.clear();
     console.log("✓ Activity store reset");
+
+    // === 3.5. CLEAR FEEDBACK FROM STORAGE AND REINITIALIZE ACCUMULATOR ===
+    activityStore.clearFeedbackFromStorage();
+    if (activityStore.currentActivity) {
+      activityStore.feedbackAccumulator = {
+        activityId: activityStore.currentActivity.id,
+        activityTitle: activityStore.currentActivity.title,
+        activityLevel: activityStore.currentActivity.level,
+        activityContext: activityStore.currentActivity.activityContext,
+        activityDescription: activityStore.currentActivity.description,
+        questionsFeedback: [],
+        totalQuestions: activityStore.currentActivity.questions.length,
+        answeredQuestions: 0,
+      };
+    }
+    console.log("✓ Feedback cleared and accumulator reinitialized");
 
     // === 4. RESETEAR FLAGS LOCALES ===
     lessonEnded = false;
@@ -234,6 +251,17 @@ import SummaryModal from "./SummaryModal.astro";
       !activityStore.isQuestionAnswered(currentQuestion.id)
     ) {
       console.warn("Cannot show summary: last question not answered");
+      return;
+    }
+
+    // Validation: ensure accumulator exists and activity is complete
+    const accumulator = activityStore.getFeedbackAccumulator();
+    if (!accumulator) {
+      console.warn("Cannot show summary: no feedback accumulator");
+      return;
+    }
+    if (!activityStore.isActivityComplete()) {
+      console.warn("Cannot show summary: activity not complete");
       return;
     }
 
@@ -493,6 +521,26 @@ import SummaryModal from "./SummaryModal.astro";
         `${total > 0 ? (current / total) * 100 : 0}%`;
   }
 
+  function debugFeedbackAccumulator() {
+    const accumulator = activityStore.getFeedbackAccumulator();
+    console.log("=== FEEDBACK ACCUMULATOR DEBUG ===");
+    console.log("Accumulator exists:", !!accumulator);
+    if (accumulator) {
+      console.log("Activity ID:", accumulator.activityId);
+      console.log("Activity Title:", accumulator.activityTitle);
+      console.log("Total Questions:", accumulator.totalQuestions);
+      console.log("Answered Questions:", accumulator.answeredQuestions);
+      console.log("Is Complete:", activityStore.isActivityComplete());
+      console.log("Questions Feedback:", accumulator.questionsFeedback.map(f => ({
+        questionId: f.questionId,
+        score: f.score,
+        decision: f.decision,
+        timestamp: new Date(f.timestamp).toISOString()
+      })));
+    }
+    console.log("=== END DEBUG ===");
+  }
+
   function handleUserInput() {
     // Guard: solo permitir input en estado ASK
     if (!canPerformAction("send message", [BotState.ASK])) {
@@ -600,6 +648,31 @@ import SummaryModal from "./SummaryModal.astro";
           feedbackContent += `<hr><div class="tips-section"><strong>Tips:</strong><br>${marked(feedback.tips)}</div>`;
         }
         addMessage("feedback", feedbackContent);
+
+        // Accumulate feedback data
+        const feedbackData: QuestionFeedbackData = {
+          questionId: currentQuestion?.id || "",
+          questionText: currentQuestion?.question || "",
+          userAnswer: message,
+          score: feedback.score || 0,
+          decision: feedback.decision || "",
+          criteria: feedback.criteria || {
+            semanticRelevance: 0,
+            grammaticalCorrectness: 0,
+            vocabularyAppropriate: 0,
+            pronunciation: 0,
+          },
+          feedback: feedback.feedback || "",
+          corrections: feedback.corrections || null,
+          tips: feedback.tips || "",
+          timestamp: Date.now(),
+        };
+        activityStore.addQuestionFeedback(feedbackData);
+
+        // Check if activity is complete
+        if (activityStore.isActivityComplete()) {
+          console.log("Activity is now complete!");
+        }
 
         stateMachine.transition(BotState.NEXT_PROMPT);
 
@@ -919,6 +992,9 @@ import SummaryModal from "./SummaryModal.astro";
 
     console.log("Question reset for retry. Chat cleared except question.");
   }
+
+  // Export debug function to window for debugging
+  (window as any).debugFeedbackAccumulator = debugFeedbackAccumulator;
 </script>
 
 <style is:global>
