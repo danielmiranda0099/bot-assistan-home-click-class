@@ -10,7 +10,7 @@ import SummaryModal from "./SummaryModal.astro";
 <div id="bot-lesson" class="bot-lesson">
   <ProgressBar current={0} total={0} />
   <div class="chat-container">
-    <button id="iniciar-btn" class="iniciar-btn">Iniciar</button>
+    <button id="iniciar-btn" class="iniciar-btn pulse">Iniciar</button>
     <div id="chat-messages" class="chat-messages">
       <!-- Messages will be added here -->
     </div>
@@ -479,6 +479,13 @@ import SummaryModal from "./SummaryModal.astro";
     return isAllowed;
   }
 
+  function notifySpeechButtonState() {
+    const isAskState = stateMachine.currentState === BotState.ASK;
+    if ((window as any).updateSpeechButtonState) {
+      (window as any).updateSpeechButtonState(isAskState);
+    }
+  }
+
   function updateUI() {
     console.log("=== updateUI called ===");
     console.log("State:", stateMachine.currentState);
@@ -589,6 +596,8 @@ import SummaryModal from "./SummaryModal.astro";
 
     // === PROGRESS BAR ===
     updateProgressBar();
+
+    notifySpeechButtonState();
 
     console.log("=== updateUI complete ===");
   }
@@ -1086,6 +1095,9 @@ import SummaryModal from "./SummaryModal.astro";
 
   // Export activityStore to window for SummaryModal access
   (window as any).activityStore = activityStore;
+
+  // Export stateMachine to window for global access
+  (window as any).stateMachine = stateMachine;
 </script>
 
 <style is:global>
