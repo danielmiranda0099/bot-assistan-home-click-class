@@ -492,6 +492,8 @@ import SummaryModal from "./SummaryModal.astro";
     console.log("Question index:", activityStore.currentQuestionIndex);
     console.log("Lesson ended:", lessonEnded);
 
+    const isEvaluating = stateMachine.currentState === BotState.EVALUATE;
+
     const currentQuestion = activityStore.getCurrentQuestion();
     const isQuestionAnswered = currentQuestion
       ? activityStore.isQuestionAnswered(currentQuestion.id)
@@ -514,7 +516,8 @@ import SummaryModal from "./SummaryModal.astro";
     const inputDisabled =
       stateMachine.currentState === BotState.INIT ||
       stateMachine.currentState === BotState.FEEDBACK ||
-      lessonEnded;
+      lessonEnded ||
+      isEvaluating;
 
     if (input) input.disabled = inputDisabled;
     if (sendBtn) sendBtn.disabled = inputDisabled;
@@ -525,7 +528,7 @@ import SummaryModal from "./SummaryModal.astro";
       ".lesson-controls button:first-child"
     ) as HTMLButtonElement;
     if (resetBtn) {
-      resetBtn.disabled = stateMachine.currentState === BotState.INIT;
+      resetBtn.disabled = stateMachine.currentState === BotState.INIT || isEvaluating;
     }
 
     // === BOTÓN TRY AGAIN ===
@@ -537,7 +540,8 @@ import SummaryModal from "./SummaryModal.astro";
       const tryAgainEnabled =
         (stateMachine.currentState === BotState.ASK ||
           stateMachine.currentState === BotState.FEEDBACK) &&
-        !lessonEnded;
+        !lessonEnded &&
+        !isEvaluating;
 
       tryAgainBtn.disabled = !tryAgainEnabled;
     }
@@ -553,7 +557,8 @@ import SummaryModal from "./SummaryModal.astro";
         stateMachine.currentState !== BotState.ASK ||
         !hasHint ||
         hintUsedForCurrentQuestion ||
-        lessonEnded;
+        lessonEnded ||
+        isEvaluating;
 
       hintBtn.disabled = hintDisabled;
     }
@@ -567,12 +572,13 @@ import SummaryModal from "./SummaryModal.astro";
     }
 
     // === NAVEGACIÓN BACK/NEXT ===
-    const canGoBack = activityStore.currentQuestionIndex > 0 && !lessonEnded;
+    const canGoBack = activityStore.currentQuestionIndex > 0 && !lessonEnded && !isEvaluating;
     const canGoNext =
       isQuestionAnswered &&
       stateMachine.currentState === BotState.FEEDBACK &&
       !lessonEnded &&
-      !isLastQuestion();
+      !isLastQuestion() &&
+      !isEvaluating;
 
     console.log("Can go back:", canGoBack);
     console.log("Can go next:", canGoNext);
@@ -590,7 +596,8 @@ import SummaryModal from "./SummaryModal.astro";
       const enableSummary =
         isLastQuestion() &&
         isQuestionAnswered &&
-        stateMachine.currentState === BotState.FEEDBACK;
+        stateMachine.currentState === BotState.FEEDBACK &&
+        !isEvaluating;
       summaryButton.disabled = !enableSummary;
     }
 
@@ -673,6 +680,7 @@ import SummaryModal from "./SummaryModal.astro";
     if (stateMachine.currentState === BotState.ASK) {
       stateMachine.transition(BotState.LISTEN_INPUT);
       stateMachine.transition(BotState.EVALUATE);
+      updateUI();
       stateMachine.transition(BotState.FEEDBACK);
 
       // IMPORTANTE: Esperar un tick para asegurar que el mensaje del usuario se renderice
