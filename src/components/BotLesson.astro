@@ -703,6 +703,7 @@ import SummaryModal from "./SummaryModal.astro";
 
       // IMPORTANTE: Esperar un tick para asegurar que el mensaje del usuario se renderice
       await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       // Agregar mensaje de espera DESPUÉS del mensaje del usuario
       const waitingMessage: Message = {
