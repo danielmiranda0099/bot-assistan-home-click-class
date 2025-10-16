@@ -158,11 +158,16 @@ import SummaryModal from "./SummaryModal.astro";
 
     stateMachine.transition(BotState.READY_CHECK);
     const greeting = getRandomGreeting();
-    addMessage("greeting", greeting);
-    stateMachine.transition(BotState.ASK);
-    askQuestion();
-    debugFeedbackAccumulator();
+    const greetingMessage = addMessage("greeting", greeting);
     updateUI();
+    setTimeout(() => {
+      chatStore.removeMessage(greetingMessage.id);
+      renderMessages();
+      stateMachine.transition(BotState.ASK);
+      askQuestion();
+      updateUI();
+    }, 5000);
+    debugFeedbackAccumulator();
   }
 
   function resetLesson() {
@@ -515,6 +520,7 @@ import SummaryModal from "./SummaryModal.astro";
 
     const inputDisabled =
       stateMachine.currentState === BotState.INIT ||
+      stateMachine.currentState === BotState.READY_CHECK ||
       stateMachine.currentState === BotState.FEEDBACK ||
       lessonEnded ||
       isEvaluating;
