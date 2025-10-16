@@ -1195,27 +1195,32 @@ import SummaryModal from "./SummaryModal.astro";
     background-color: #7cec87;
     color: var(--dark-color);
     font-weight: bold;
+    animation: slideInLeft 0.4s ease-out;
   }
 
   .message-assistant .content {
     background-color: #e0e0e0;
     color: var(--dark-color);
+    animation: slideInLeft 0.4s ease-out;
   }
 
   .message-user .content {
     background-color: var(--primary-color);
     color: white;
+    animation: slideInUp 0.4s ease-out;
   }
 
   .message-hint .content {
     background-color: var(--warning-color);
     color: var(--dark-color);
     font-style: italic;
+    animation: slideInLeft 0.4s ease-out;
   }
 
   .message-feedback .content {
     background-color: #7cec87;
     color: var(--dark-color);
+    animation: slideInLeft 0.5s ease-out;
   }
 
   .message-waiting {
@@ -1223,9 +1228,10 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   .message-waiting .content {
-    background-color: lightgray;
-    color: var(--dark-color);
-    font-style: italic;
+      background-color: lightgray;
+      color: var(--dark-color);
+      font-style: italic;
+      animation: slideInLeft 0.3s ease-out;
   }
 
   .message-error {
@@ -1233,9 +1239,31 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   .message-error .content {
-    background-color: #ff4444;
-    color: white;
-    font-weight: bold;
-    text-align: center;
+      background-color: #ff4444;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+      animation: slideInUp 0.3s ease-out;
   }
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>
