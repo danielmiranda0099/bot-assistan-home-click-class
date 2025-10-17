@@ -10,9 +10,9 @@ const { hintDisabled = false, tryAgainDisabled = false } = Astro.props;
 ---
 
 <div class="lesson-controls">
-  <Button variant="secondary" type="button">Reset</Button>
-  <Button variant="warning" type="button" disabled={tryAgainDisabled}>Try Again</Button>
-  <Button variant="warning" type="button" disabled={hintDisabled}>Hint</Button>
+  <Button id="reset-button" variant="secondary" type="button">Reset</Button>
+  <Button id="try-again-button" variant="warning" type="button" disabled={tryAgainDisabled}>Try Again</Button>
+  <Button id="hint-button" variant="warning" type="button" disabled={hintDisabled}>Hint</Button>
   <Button variant="success" type="button" id="summary-button" disabled>See Summary</Button>
 </div>
 
@@ -25,3 +25,14 @@ const { hintDisabled = false, tryAgainDisabled = false } = Astro.props;
     flex-wrap: wrap;
   }
 </style>
+
+<script>
+  import { AudioService } from "../stores/AudioService.ts";
+
+  const audioService = new AudioService();
+
+  document.getElementById("reset-button")?.addEventListener("click", () => audioService.play("click"));
+  document.getElementById("try-again-button")?.addEventListener("click", () => audioService.play("click"));
+  document.getElementById("hint-button")?.addEventListener("click", () => audioService.play("click"));
+  document.getElementById("summary-button")?.addEventListener("click", () => audioService.play("click"));
+</script>

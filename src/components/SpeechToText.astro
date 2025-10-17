@@ -213,7 +213,10 @@
     }
   }
 
+  import { AudioService } from '../stores/AudioService.ts';
+
   let currentIsAskState = false;
+  const audioService = new AudioService();
 
   class SpeechToTextController {
     private recognition: SpeechRecognition | null = null;
@@ -372,6 +375,7 @@
 
       try {
         this.recognition.start();
+        audioService.play('microConnect');
       } catch (error) {
         console.error("Error starting speech recognition:", error);
         this.updateStatus("Error starting recognition", "error");
@@ -381,6 +385,7 @@
     private stopListening(): void {
       if (!this.recognition || !this.isListening) return;
 
+      audioService.play('microDisconnect');
       this.recognition.stop();
     }
 

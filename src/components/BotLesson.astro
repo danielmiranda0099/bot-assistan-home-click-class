@@ -35,6 +35,7 @@ import SummaryModal from "./SummaryModal.astro";
   import activityData from "../activities/a1.json";
   // import activityData from "../activities/example-activity-no-hints.json";
   import { marked } from "marked";
+  import { AudioService } from "../stores/AudioService.ts";
 
   const OPENAI_API_KEY = import.meta.env.PUBLIC_OPENAI_API_KEY;
   const OPENAI_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_ASSISTANT_ID;
@@ -44,6 +45,7 @@ import SummaryModal from "./SummaryModal.astro";
   const activityStore = new ActivityStore();
   const chatStore = new ChatStore();
   const openAIService = new OpenAIService(OPENAI_API_KEY, OPENAI_ASSISTANT_ID);
+  const audioService = new AudioService();
   let lessonEnded = false;
   let hintUsedForCurrentQuestion = false;
   let waitingMessageId: string | null = null;
@@ -173,6 +175,9 @@ import SummaryModal from "./SummaryModal.astro";
   function resetLesson() {
     console.log("🔄 RESETTING LESSON");
 
+    // Play click sound
+    audioService.play("click");
+
     // === 1. LIMPIAR STORAGE COMPLETAMENTE ===
     chatStore.clearAllStorage();
     console.log("✓ localStorage cleared");
@@ -255,6 +260,9 @@ import SummaryModal from "./SummaryModal.astro";
   // function skipQuestion() { ... }
 
   function showHint() {
+    // Play click sound
+    audioService.play("click");
+
     // Guard: solo permitir hint en estado ASK
     if (!canPerformAction("show hint", [BotState.ASK])) {
       return;
@@ -274,6 +282,9 @@ import SummaryModal from "./SummaryModal.astro";
     console.log("Lesson ended flag:", lessonEnded);
     console.log("Current question index:", activityStore.currentQuestionIndex);
     console.log("Total questions:", activityStore.currentActivity?.questions.length || 0);
+
+    // Play click sound
+    audioService.play("click");
 
     // Guard: solo permitir en FEEDBACK cuando es la última pregunta
     if (!canPerformAction("show summary", [BotState.FEEDBACK])) {
@@ -398,6 +409,11 @@ import SummaryModal from "./SummaryModal.astro";
     };
     chatStore.addMessage(message);
     renderMessages();
+
+    // Play message sound for assistant, hint, and feedback types
+    if (type === "assistant" || type === "hint" || type === "feedback") {
+      audioService.play("message");
+    }
 
     // Solo hacer scroll si el usuario estaba cerca del final (dentro de 50px)
     if (shouldScroll) {
@@ -1070,6 +1086,9 @@ import SummaryModal from "./SummaryModal.astro";
 
   function handleTryAgain() {
     console.log("Try Again clicked");
+
+    // Play click sound
+    audioService.play("click");
 
     if (!canPerformAction("try again", [BotState.ASK, BotState.FEEDBACK])) {
       return;

@@ -355,6 +355,9 @@
 </style>
 
 <script>
+  import { AudioService } from "../stores/AudioService.ts";
+  const audioService = new AudioService();
+
   document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("summary-modal");
     const closeButton = document.getElementById("close-modal");
@@ -367,6 +370,7 @@
 
     if (restartButton) {
       restartButton.addEventListener("click", () => {
+        audioService.play("click");
         closeModal();
         // Esperar a que el modal se cierre antes de resetear
         setTimeout(() => {
@@ -383,6 +387,7 @@
 
     if (newLessonButton) {
       newLessonButton.addEventListener("click", () => {
+        audioService.play("click");
         alert("New lesson feature coming soon!");
         closeModal();
       });
@@ -407,21 +412,21 @@
     // Get the activityStore from window
     const activityStore = (window as any).activityStore;
     if (!activityStore) {
-      console.error('ActivityStore not found on window');
+      console.error("ActivityStore not found on window");
       return;
     }
 
     // Retrieve the feedback accumulator
     const feedbackAccumulator = activityStore.getFeedbackAccumulator();
     if (!feedbackAccumulator) {
-      console.error('No feedback accumulator available');
+      console.error("No feedback accumulator available");
       return;
     }
 
     // Update DOM elements with counter values
-    const correctElement = document.getElementById('correct-count');
-    const partialElement = document.getElementById('partial-count');
-    const incorrectElement = document.getElementById('incorrect-count');
+    const correctElement = document.getElementById("correct-count");
+    const partialElement = document.getElementById("partial-count");
+    const incorrectElement = document.getElementById("incorrect-count");
 
     if (correctElement) {
       correctElement.textContent = feedbackAccumulator.correct.toString();
@@ -433,19 +438,23 @@
     }
     if (incorrectElement) {
       incorrectElement.textContent = feedbackAccumulator.incorrect.toString();
-      console.log(`Updated incorrect count to: ${feedbackAccumulator.incorrect}`);
+      console.log(
+        `Updated incorrect count to: ${feedbackAccumulator.incorrect}`
+      );
     }
   }
 
   function closeModal() {
     const modal = document.getElementById("summary-modal");
     modal?.classList.remove("active");
+    audioService.play("click");
   }
 
   function openModal() {
     const modal = document.getElementById("summary-modal");
     modal?.classList.add("active");
     updateSummaryWithFeedback();
+    audioService.play("message");
   }
 
   // Export function for external use

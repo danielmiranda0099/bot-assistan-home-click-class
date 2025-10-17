@@ -97,6 +97,9 @@ const { current, total } = Astro.props;
 </style>
 
 <script>
+  import { AudioService } from '../stores/AudioService.ts';
+  const audioService = new AudioService();
+
   document.addEventListener("DOMContentLoaded", () => {
     const backButton = document.getElementById(
       "back-button"
@@ -116,6 +119,7 @@ const { current, total } = Astro.props;
 
   function handleBackClick() {
     console.log("Back button clicked");
+    audioService.play('click');
     // Disparar evento personalizado que BotLesson escuchará
     const event = new CustomEvent("navigation-back", {
       bubbles: true,
@@ -126,6 +130,7 @@ const { current, total } = Astro.props;
 
   function handleNextClick() {
     console.log("Next button clicked");
+    audioService.play('click');
     // Disparar evento personalizado que BotLesson escuchará
     const event = new CustomEvent("navigation-next", {
       bubbles: true,
