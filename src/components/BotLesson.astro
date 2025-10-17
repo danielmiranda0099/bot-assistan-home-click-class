@@ -166,7 +166,7 @@ import SummaryModal from "./SummaryModal.astro";
       stateMachine.transition(BotState.ASK);
       askQuestion();
       updateUI();
-    }, 5000);
+    }, 3000);
     debugFeedbackAccumulator();
   }
 
@@ -1227,7 +1227,7 @@ import SummaryModal from "./SummaryModal.astro";
     background-color: var(--warning-color);
     color: var(--dark-color);
     font-style: italic;
-    animation: slideInLeft 0.6s ease-out;
+    animation: slideInUp 0.6s ease-out;
   }
 
   .message-feedback .content {
