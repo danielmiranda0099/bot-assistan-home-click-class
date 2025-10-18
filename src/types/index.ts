@@ -114,6 +114,7 @@ export interface QuestionFeedbackData {
   feedback: string;
   corrections: string | null;
   tips: string;
+  hintUsed: boolean;
   timestamp: number;
 }
 

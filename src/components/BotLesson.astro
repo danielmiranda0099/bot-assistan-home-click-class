@@ -809,6 +809,7 @@ import SummaryModal from "./SummaryModal.astro";
           feedback: feedback.feedback || "",
           corrections: feedback.corrections || null,
           tips: feedback.tips || "",
+          hintUsed: hintUsedForCurrentQuestion,
           timestamp: Date.now(),
         };
         activityStore.addQuestionFeedback(feedbackData);

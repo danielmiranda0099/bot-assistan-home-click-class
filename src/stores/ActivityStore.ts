@@ -39,6 +39,12 @@ export class ActivityStore {
       }
       this.feedbackAccumulator.questionsFeedback = Array.from(feedbackMap.values());
 
+      // NEW: Validate hintUsed in old feedbacks
+      this.feedbackAccumulator.questionsFeedback = this.feedbackAccumulator.questionsFeedback.map(feedback => ({
+        ...feedback,
+        hintUsed: feedback.hintUsed ?? false // If not exists, default to false
+      }));
+
       // Recalculate counters based on unique feedbacks
       let correct = 0;
       let partial = 0;
