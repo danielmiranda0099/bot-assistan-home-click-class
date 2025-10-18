@@ -8,19 +8,19 @@ export class AudioService {
 
   private async precacheSounds(): Promise<void> {
     const soundFiles = [
-      { name: 'click', path: '/sfx/click.mp3' },
-      { name: 'message', path: '/sfx/message.mp3' },
-      { name: 'microConnect', path: '/sfx/micro-connect.mp3' },
-      { name: 'microDisconnect', path: '/sfx/micro-disconnect.mp3' },
-      { name: 'thinking', path: '/sfx/thinking.mp3' },
+      { name: "click", path: "/sfx/click.mp3" },
+      { name: "message", path: "/sfx/message.mp3" },
+      { name: "microConnect", path: "/sfx/micro-connect.mp3" },
+      { name: "microDisconnect", path: "/sfx/micro-disconnect.mp3" },
+      { name: "thinking", path: "/sfx/thinking.mp3" },
     ];
 
     for (const { name, path } of soundFiles) {
       try {
         const audio = new Audio(path);
         await new Promise((resolve, reject) => {
-          audio.addEventListener('canplaythrough', resolve, { once: true });
-          audio.addEventListener('error', reject, { once: true });
+          audio.addEventListener("canplaythrough", resolve, { once: true });
+          audio.addEventListener("error", reject, { once: true });
           audio.load();
         });
         this.sounds.set(name, audio);
