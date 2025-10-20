@@ -172,6 +172,44 @@ export class OpenAIService {
     throw new Error("Timeout waiting for assistant response");
   }
 
+  async getGeneralFeedback(activityPayload: any): Promise<any> {
+    const thread = await this.createThread();
+    const promptText = this.buildGeneralFeedbackPrompt(activityPayload);
+    await this.addMessageToThread(thread.id, promptText);
+    const run = await this.createRun(thread.id);
+
+    // Same polling logic as getFeedback
+    let runStatus;
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    while (attempts < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 1000));
+      attempts++;
+      runStatus = await this.getRunStatus(thread.id, run.id);
+
+      if (runStatus.status === "completed") {
+        const messages = await this.getMessages(thread.id);
+        const assistantMessages = messages.data.filter((m: any) => m.role === "assistant");
+
+        if (assistantMessages.length > 0) {
+          const rawContent = assistantMessages[0].content[0].text.value;
+          let jsonString = rawContent.trim();
+
+          if (jsonString.startsWith('```json')) {
+            jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          }
+
+          return JSON.parse(jsonString);
+        }
+      } else if (runStatus.status === "failed" || runStatus.status === "expired") {
+        throw new Error("Run failed or expired");
+      }
+    }
+
+    throw new Error("Timeout waiting for general feedback");
+  }
+
   private buildPrompt(obj: any): string {
     return `
 # Evaluación y Feedback de Respuestas - Asistente de Inglés
@@ -199,5 +237,9 @@ Eres un experto evaluador pedagógico de inglés especializado en proporcionar f
 Evalúa ahora la respuesta del estudiante siguiendo las directrices proporcionadas.
 Por favor responde ÚNICAMENTE en el formato JSON especificado en las instrucciones del system prompt del assistant.
     `;
+  }
+
+  private buildGeneralFeedbackPrompt(accumulator: any): string {
+    return JSON.stringify(accumulator, null, 2);
   }
 }

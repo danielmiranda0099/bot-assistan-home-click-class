@@ -24,7 +24,6 @@
     </div>
 
     <div class="modal-body">
-      <!-- Results Summary -->
       <div class="results-grid">
         <div class="result-card correct">
           <div class="result-number" id="correct-count">0</div>
@@ -40,33 +39,10 @@
         </div>
       </div>
 
-      <!-- Summary Section -->
-      <div class="summary-section">
-        <h3>Summary</h3>
-        <p id="summary-text">
-          Great work on completing this lesson! You've shown good understanding
-          of the material and made progress in your English learning journey.
-        </p>
-      </div>
-
-      <!-- Important Corrections -->
-      <div class="corrections-section">
-        <h3>Important Corrections</h3>
-        <ul id="corrections-list">
-          <li>Remember to use proper subject-verb agreement</li>
-          <li>Pay attention to preposition usage</li>
-          <li>Practice your pronunciation of difficult sounds</li>
-        </ul>
-      </div>
-
-      <!-- Tips Section -->
-      <div class="tips-section">
-        <h3>Tips & Next Steps</h3>
-        <ul id="tips-list">
-          <li>Review the questions you found challenging</li>
-          <li>Practice similar conversations in real-life situations</li>
-          <li>Try the next level to continue improving</li>
-        </ul>
+      <div id="summary-content"></div>
+      <div id="loading-spinner" style="display: none; text-align: center; padding: 2rem;">
+        <div class="spinner"></div>
+        <p>Generating summary...</p>
       </div>
     </div>
 
@@ -339,6 +315,21 @@
     box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
   }
 
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
   @media (max-width: 640px) {
     .results-grid {
       grid-template-columns: 1fr;
@@ -356,7 +347,9 @@
 
 <script>
   import { AudioService } from "../stores/AudioService.ts";
+  import { marked } from "marked";
   const audioService = new AudioService();
+  (window as any).marked = marked;
 
   document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("summary-modal");
@@ -408,40 +401,74 @@
     });
   });
 
-  function updateSummaryWithFeedback() {
-    // Get the activityStore from window
+  async function updateSummaryWithFeedback() {
     const activityStore = (window as any).activityStore;
-    if (!activityStore) {
-      console.error("ActivityStore not found on window");
+    const openAIGeneralFeedbackService = (window as any).openAIGeneralFeedbackService;
+
+    if (!activityStore || !openAIGeneralFeedbackService) {
+      console.error("Required services not found");
+      showError("Service initialization error");
       return;
     }
 
-    // Retrieve the feedback accumulator
-    const feedbackAccumulator = activityStore.getFeedbackAccumulator();
-    if (!feedbackAccumulator) {
-      console.error("No feedback accumulator available");
+    const accumulator = activityStore.getFeedbackAccumulator();
+    if (!accumulator) {
+      showError("No feedback data available");
       return;
     }
 
-    // Update DOM elements with counter values
-    const correctElement = document.getElementById("correct-count");
-    const partialElement = document.getElementById("partial-count");
-    const incorrectElement = document.getElementById("incorrect-count");
+    // Update counters
+    document.getElementById("correct-count")!.textContent = accumulator.correct.toString();
+    document.getElementById("partial-count")!.textContent = accumulator.partial.toString();
+    document.getElementById("incorrect-count")!.textContent = accumulator.incorrect.toString();
 
-    if (correctElement) {
-      correctElement.textContent = feedbackAccumulator.correct.toString();
-      console.log(`Updated correct count to: ${feedbackAccumulator.correct}`);
+    // Show spinner
+    document.getElementById("loading-spinner")!.style.display = "block";
+    document.getElementById("summary-content")!.innerHTML = "";
+
+    try {
+      const generalFeedback = await openAIGeneralFeedbackService.getGeneralFeedback(accumulator);
+      console.log("General feedback response:", generalFeedback);
+
+      // Hide spinner
+      document.getElementById("loading-spinner")!.style.display = "none";
+
+      // Render feedback
+      renderGeneralFeedback(generalFeedback);
+    } catch (error) {
+      console.error("Error fetching general feedback:", error);
+      document.getElementById("loading-spinner")!.style.display = "none";
+      showError("Failed to load summary. Please try again.");
     }
-    if (partialElement) {
-      partialElement.textContent = feedbackAccumulator.partial.toString();
-      console.log(`Updated partial count to: ${feedbackAccumulator.partial}`);
+  }
+
+  function renderGeneralFeedback(feedback: any) {
+    const { marked } = (window as any);
+    let html = "";
+
+    if (feedback.summary) {
+      html += `<div class="summary-section"><h3>Summary</h3>${marked.parse(feedback.summary)}</div>`;
     }
-    if (incorrectElement) {
-      incorrectElement.textContent = feedbackAccumulator.incorrect.toString();
-      console.log(
-        `Updated incorrect count to: ${feedbackAccumulator.incorrect}`
-      );
+
+    if (feedback.corrections) {
+      html += `<div class="corrections-section"><h3>Important Corrections</h3>${marked.parse(feedback.corrections)}</div>`;
     }
+
+    if (feedback.tipsAndNextSteps) {
+      // CRÍTICO: Convertir array a string markdown
+      const tipsText = Array.isArray(feedback.tipsAndNextSteps)
+        ? feedback.tipsAndNextSteps.map((tip: string) => `- ${tip}`).join('\n')
+        : feedback.tipsAndNextSteps;
+
+      html += `<div class="tips-section"><h3>Tips & Next Steps</h3>${marked.parse(tipsText)}</div>`;
+    }
+
+    document.getElementById("summary-content")!.innerHTML = html;
+  }
+
+  function showError(message: string) {
+    document.getElementById("summary-content")!.innerHTML =
+      `<div style="color: var(--danger-color); text-align: center; padding: 2rem;">${message}</div>`;
   }
 
   function closeModal() {

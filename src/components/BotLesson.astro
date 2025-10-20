@@ -39,12 +39,14 @@ import SummaryModal from "./SummaryModal.astro";
 
   const OPENAI_API_KEY = import.meta.env.PUBLIC_OPENAI_API_KEY;
   const OPENAI_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_ASSISTANT_ID;
+  const OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID;
 
   // Initialize stores and state machine
   const stateMachine = new BotStateMachine();
   const activityStore = new ActivityStore();
   const chatStore = new ChatStore();
   const openAIService = new OpenAIService(OPENAI_API_KEY, OPENAI_ASSISTANT_ID);
+  const openAIGeneralFeedbackService = new OpenAIService(OPENAI_API_KEY, OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID);
   const audioService = new AudioService();
   let lessonEnded = false;
   let hintUsedForCurrentQuestion = false;
@@ -1150,6 +1152,9 @@ import SummaryModal from "./SummaryModal.astro";
 
   // Export stateMachine to window for global access
   (window as any).stateMachine = stateMachine;
+
+  // Export general feedback service to window
+  (window as any).openAIGeneralFeedbackService = openAIGeneralFeedbackService;
 </script>
 
 <style is:global>
