@@ -9,6 +9,7 @@
       "id": "q1",
       "type": "text",
       "question": "You are standing in the hallway and you don’t know where the library is. What polite question can you ask the student with books?",
+      "language": "en",
       "hint": "Start with 'Excuse me, can you tell me...?'",
       "evaluatePoints": [
         "Polite opening (Excuse me)",
@@ -20,6 +21,7 @@
       "id": "q2",
       "type": "text",
       "question": "The student says: 'Yes, of course. Go straight, then turn left. The library is next to the science lab.' What could you say to show that you understood and to thank them?",
+      "language": "en",
       "hint": "Repeat part of the direction and say 'Thank you'.",
       "evaluatePoints": [
         "Acknowledges directions",
@@ -31,6 +33,7 @@
       "id": "q3",
       "type": "text",
       "question": "Before leaving, you want to introduce yourself. What could you say?",
+      "language": "en",
       "hint": "Use 'My name is...' or 'I’m...'",
       "evaluatePoints": [
         "Clear self-introduction",
@@ -42,6 +45,7 @@
       "id": "q4",
       "type": "text",
       "question": "The student smiles and says: 'Nice to meet you! My name is Tom.' How could you politely respond?",
+      "language": "en",
       "hint": "Think of 'Nice to meet you too.'",
       "evaluatePoints": ["Appropriate social response", "Friendly tone"]
     },
@@ -49,6 +53,7 @@
       "id": "q5",
       "type": "text",
       "question": "Finally, you want to leave for the library. What polite farewell could you use before walking away?",
+      "language": "en",
       "hint": "Use 'Goodbye' or 'See you later.'",
       "evaluatePoints": ["Correct farewell expression", "Polite closing"]
     }

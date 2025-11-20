@@ -9,6 +9,7 @@
       "id": "q1",
       "type": "text",
       "question": "What are the most important key points the text expresses, and why do you think they matter? Explain the points.",
+      "language": "en",
       "hint": "Think about conscience, impulse, and the value of pausing before reacting.",
       "evaluatePoints": [
         "Identifies at least 2–3 key points from the text",
@@ -20,6 +21,7 @@
       "id": "q2",
       "type": "text",
       "question": "Is it easier to be imprudent than to be prudent? Why do you think that is? Do you agree or disagree? Explain your reasoning.",
+      "language": "en",
       "hint": "Compare acting on impulse vs. pausing to reflect.",
       "evaluatePoints": [
         "Takes a clear position",
@@ -31,6 +33,7 @@
       "id": "q3",
       "type": "text",
       "question": "When others let their 'demons' speak, how do you typically respond — defend, withdraw, attack, or pause? Explain.",
+      "language": "en",
       "hint": "Think about your usual reactions in heated situations.",
       "evaluatePoints": [
         "Describes personal reaction style",
@@ -42,6 +45,7 @@
       "id": "q4",
       "type": "text",
       "question": "What situations tend to trigger strong emotional reactions in you? How do you usually respond?",
+      "language": "en",
       "hint": "Consider stress, conflict, or personal challenges.",
       "evaluatePoints": [
         "Identifies personal triggers",
@@ -53,6 +57,7 @@
       "id": "q5",
       "type": "text",
       "question": "In your opinion, is holding back always the right choice? How do you know when to speak up or act and when to hold back?",
+      "language": "en",
       "hint": "Think about balance: prudence vs. silence.",
       "evaluatePoints": [
         "Explores pros and cons",
@@ -64,6 +69,7 @@
       "id": "q6",
       "type": "text",
       "question": "Is it always possible to pause and choose your reaction, even in high-stress situations? How? Why or why not?",
+      "language": "en",
       "hint": "Reflect on self-control under pressure.",
       "evaluatePoints": [
         "Takes a clear stance",
@@ -75,6 +81,7 @@
       "id": "q7",
       "type": "text",
       "question": "In what areas of your life (work, family, social media, personal conflict) do you struggle most to be prudent? Explain why.",
+      "language": "en",
       "hint": "Think about everyday contexts where you face challenges.",
       "evaluatePoints": [
         "Identifies context(s)",
@@ -86,6 +93,7 @@
       "id": "q8",
       "type": "text",
       "question": "Do you think your conscience is more of a guide, a critic, or a burden? Why?",
+      "language": "en",
       "hint": "Reflect on how you experience your inner voice.",
       "evaluatePoints": [
         "Chooses one perspective",
@@ -97,6 +105,7 @@
       "id": "q9",
       "type": "text",
       "question": "If you had to teach one younger person the value of prudence, what story or example from your life would you share?",
+      "language": "en",
       "hint": "Think of a time you learned to hold back or act wisely.",
       "evaluatePoints": [
         "Provides personal example",

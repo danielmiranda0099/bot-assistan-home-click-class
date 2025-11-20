@@ -9,6 +9,7 @@
       "id": "q1",
       "type": "text",
       "question": "Where are you from?",
+      "language": "en",
       "hint": "Say your country or city.",
       "evaluatePoints": [
         "Responde con un lugar correcto.",
@@ -20,6 +21,7 @@
       "id": "q2",
       "type": "text",
       "question": "How old are you?",
+      "language": "en",
       "hint": "Use a number.",
       "evaluatePoints": [
         "Indica la edad con número.",
@@ -31,6 +33,7 @@
       "id": "q3",
       "type": "text",
       "question": "What is your favorite color?",
+      "language": "en",
       "hint": "Think of simple colors: red, blue, green.",
       "evaluatePoints": [
         "Nombra un color común.",
