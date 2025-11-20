@@ -21,6 +21,7 @@ export interface Question {
   question: string;
   hint: string;
   evaluatePoints: string[];
+  language?: string;
 }
 
 export interface Activity {
@@ -59,6 +60,7 @@ export interface Message {
   type: 'assistant' | 'user' | 'hint' | 'feedback' | 'greeting' | 'waiting' | 'error';
   content: string;
   timestamp: Date;
+  language?: string;
 }
 
 /**

@@ -36,6 +36,23 @@ import SummaryModal from "./SummaryModal.astro";
   // import activityData from "../activities/example-activity-no-hints.json";
   import { marked } from "marked";
   import { AudioService } from "../stores/AudioService.ts";
+  import { TextToSpeechService } from "../stores/TextToSpeechService.ts";
+
+  // Interface para secciones de feedback separadas
+  interface FeedbackSections {
+    feedback: string;
+    corrections: string | null;
+    tips: string | null;
+  }
+
+  // Función helper para extraer secciones de feedback
+  function extractFeedbackSections(feedbackData: OpenAIFeedback): FeedbackSections {
+    return {
+      feedback: feedbackData.feedback || '',
+      corrections: feedbackData.corrections || null,
+      tips: feedbackData.tips || null
+    };
+  }
 
   const OPENAI_API_KEY = import.meta.env.PUBLIC_OPENAI_API_KEY;
   const OPENAI_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_ASSISTANT_ID;
@@ -48,6 +65,7 @@ import SummaryModal from "./SummaryModal.astro";
   const openAIService = new OpenAIService(OPENAI_API_KEY, OPENAI_ASSISTANT_ID);
   const openAIGeneralFeedbackService = new OpenAIService(OPENAI_API_KEY, OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID);
   const audioService = new AudioService();
+  const ttsService = new TextToSpeechService();
   let lessonEnded = false;
   let hintUsedForCurrentQuestion = false;
   let waitingMessageId: string | null = null;
@@ -224,6 +242,11 @@ import SummaryModal from "./SummaryModal.astro";
     questionStartTime = null;
     console.log("✓ Local flags reset");
 
+    // === 4.5. RESETEAR TTS ===
+    ttsService.clearPlayedHistory();
+    ttsService.stop();
+    console.log("✓ TTS reset");
+
     // === 5. RESETEAR STATE MACHINE ===
     stateMachine.currentState = BotState.INIT;
     console.log("✓ State machine reset to INIT");
@@ -391,42 +414,89 @@ import SummaryModal from "./SummaryModal.astro";
         loadQuestionState(question.id);
       } else {
         // Si no hay estado o no está completada, mostrar pregunta fresca
-        addMessage("assistant", question.question);
+        addMessage("assistant", question.question, question.language);
         hintUsedForCurrentQuestion = false;
         questionStartTime = Date.now();
       }
     }
   }
 
-  function addMessage(type: Message["type"], content: string): Message {
+  function addMessage(type: Message["type"], content: string, language?: string): Message {
     const chatContainer = document.querySelector(".chat-container");
     const shouldScroll = chatContainer
       ? chatContainer.scrollTop + chatContainer.clientHeight >=
         chatContainer.scrollHeight - 50
       : true;
-
+  
     const message: Message = {
       id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // ID único
       type,
       content,
       timestamp: new Date(),
+      language,
     };
     chatStore.addMessage(message);
     renderMessages();
-
+  
     // Play message sound for assistant, hint, and feedback types
     if (type === "assistant" || type === "hint" || type === "feedback") {
       audioService.play("message");
     }
-
+  
+    // Auto-reproducción condicional para preguntas y feedback
+    if ((type === "assistant" || type === "feedback") && !ttsService.hasBeenPlayed(message.id)) {
+      setTimeout(() => {
+        handleAutoPlayTTS(message);
+      }, 100);
+    }
+  
     // Solo hacer scroll si el usuario estaba cerca del final (dentro de 50px)
     if (shouldScroll) {
       scrollToBottom();
     }
-
+  
     return message;
   }
+  
+  function handleAutoPlayTTS(message: Message) {
+    // Si es feedback con secciones, solo reproducir la sección principal
+    if (message.type === 'feedback' && (message as any).ttsData) {
+      const ttsData = (message as any).ttsData;
+      const lang = ttsData.language || 'en';
+      const sectionId = `${message.id}-feedback`;
 
+      ttsService.speak(ttsData.feedback, lang, sectionId, {
+        onStart: () => {
+          updateSectionTTSState(message.id, 'feedback', 'playing');
+        },
+        onEnd: () => {
+          updateSectionTTSState(message.id, 'feedback', 'stopped');
+          handleTTSComplete(message.type);
+        }
+      });
+    } else {
+      // Para otros tipos, comportamiento normal
+      const lang = message.language || 'en';
+      ttsService.speak(message.content, lang, message.id, {
+        onStart: () => {
+          updateTTSControls(message.id, 'playing');
+        },
+        onEnd: () => {
+          updateTTSControls(message.id, 'stopped');
+          handleTTSComplete(message.type);
+        }
+      });
+    }
+  }
+  
+  function handleTTSComplete(messageType: Message["type"]) {
+    if (messageType === "feedback") {
+      // No hacer nada, esperar acción del usuario (NEXT)
+      return;
+    }
+    // Para otros tipos, continuar flujo normal si es necesario
+  }
+  
   function renderMessages() {
     try {
       const messagesContainer = document.getElementById("chat-messages");
@@ -465,6 +535,13 @@ import SummaryModal from "./SummaryModal.astro";
         }
 
         bubble.appendChild(content);
+
+        // Agregar controles TTS si aplica
+        if (shouldHaveTTSControls(message.type)) {
+          const controls = createTTSControls(message);
+          bubble.appendChild(controls);
+        }
+
         messagesContainer.appendChild(bubble);
       });
 
@@ -478,6 +555,206 @@ import SummaryModal from "./SummaryModal.astro";
     } catch (error) {
       console.error("Error rendering messages:", error);
     }
+  }
+
+  function shouldHaveTTSControls(type: Message["type"]): boolean {
+    return ['assistant', 'user', 'feedback', 'greeting'].includes(type);
+  }
+
+  function createTTSControls(message: Message): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "tts-controls";
+    container.setAttribute("data-tts-state", "idle");
+
+    // Si el mensaje tiene secciones (feedback), crear controles múltiples
+    const hasSections = (message as any).ttsData && message.type === 'feedback';
+
+    if (hasSections) {
+      const ttsData = (message as any).ttsData;
+
+      // Feedback (siempre visible, auto-play)
+      const feedbackBtn = createTTSButton('feedback', 'Feedback');
+      feedbackBtn.classList.add('tts-section-btn', 'tts-feedback-btn');
+      container.appendChild(feedbackBtn);
+
+      // Corrections (solo si existe)
+      if (ttsData.corrections) {
+        const correctionsBtn = createTTSButton('corrections', 'Corrections');
+        correctionsBtn.classList.add('tts-section-btn', 'tts-corrections-btn');
+        container.appendChild(correctionsBtn);
+      }
+
+      // Tips (solo si existe)
+      if (ttsData.tips) {
+        const tipsBtn = createTTSButton('tips', 'Tips');
+        tipsBtn.classList.add('tts-section-btn', 'tts-tips-btn');
+        container.appendChild(tipsBtn);
+      }
+
+      // Añadir event listeners
+      container.querySelectorAll('.tts-section-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleSectionTTS(message, btn.getAttribute('data-section')!));
+      });
+
+    } else {
+      // Control TTS normal (para assistant, hint, etc.)
+      const playBtn = document.createElement("button");
+      playBtn.className = "tts-play-btn";
+      playBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      `;
+
+      const stopBtn = document.createElement("button");
+      stopBtn.className = "tts-stop-btn";
+      stopBtn.style.display = "none";
+      stopBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12"/>
+        </svg>
+      `;
+
+      playBtn.addEventListener("click", () => handleManualPlayTTS(message));
+      stopBtn.addEventListener("click", () => {
+        ttsService.stop();
+        updateTTSControls(message.id, 'stopped');
+      });
+
+      container.appendChild(playBtn);
+      container.appendChild(stopBtn);
+    }
+
+    return container;
+  }
+
+  // Helper para crear botones de sección
+  function createTTSButton(section: string, label: string): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'tts-section-btn';
+    btn.setAttribute('data-section', section);
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <span>${label}</span>
+    `;
+    return btn;
+  }
+
+  function handleSectionTTS(message: Message, section: string): void {
+    const ttsData = (message as any).ttsData;
+    if (!ttsData) return;
+
+    let textToSpeak = '';
+
+    switch(section) {
+      case 'feedback':
+        textToSpeak = ttsData.feedback;
+        break;
+      case 'corrections':
+        textToSpeak = ttsData.corrections || '';
+        break;
+      case 'tips':
+        textToSpeak = ttsData.tips || '';
+        break;
+    }
+
+    if (!textToSpeak) return;
+
+    const lang = ttsData.language || 'en';
+    const sectionId = `${message.id}-${section}`;
+
+    ttsService.speak(textToSpeak, lang, sectionId, {
+      onStart: () => {
+        updateSectionTTSState(message.id, section, 'playing');
+      },
+      onEnd: () => {
+        updateSectionTTSState(message.id, section, 'stopped');
+      }
+    });
+  }
+
+  function updateSectionTTSState(messageId: string, section: string, state: 'playing' | 'stopped'): void {
+    const bubble = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!bubble) return;
+
+    const btn = bubble.querySelector(`[data-section="${section}"]`) as HTMLElement;
+    if (!btn) return;
+
+    if (state === 'playing') {
+      btn.classList.add('playing');
+      btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="speaker-animated">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+        </svg>
+        <span>${section.charAt(0).toUpperCase() + section.slice(1)}</span>
+      `;
+    } else {
+      btn.classList.remove('playing');
+      btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        <span>${section.charAt(0).toUpperCase() + section.slice(1)}</span>
+      `;
+    }
+  }
+
+  function handleManualPlayTTS(message: Message) {
+    const lang = message.language || 'en';
+    ttsService.speak(message.content, lang, message.id, {
+      onStart: () => {
+        updateTTSControls(message.id, 'playing');
+      },
+      onEnd: () => {
+        updateTTSControls(message.id, 'stopped');
+      }
+    });
+  }
+
+  function updateTTSControls(messageId: string, state: 'playing' | 'stopped') {
+    const bubble = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!bubble) return;
+
+    const controls = bubble.querySelector('.tts-controls');
+    if (!controls) return;
+
+    const playBtn = controls.querySelector('.tts-play-btn');
+    const stopBtn = controls.querySelector('.tts-stop-btn');
+
+    if (state === 'playing') {
+      (playBtn as HTMLElement).innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="speaker-animated">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+          <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      `;
+      (stopBtn as HTMLElement).style.display = 'block';
+    } else {
+      (playBtn as HTMLElement).innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      `;
+      (stopBtn as HTMLElement).style.display = 'none';
+    }
+  }
+
+  function disableAllTTSControls() {
+    const controls = document.querySelectorAll('.tts-controls button');
+    controls.forEach(btn => {
+      (btn as HTMLButtonElement).disabled = true;
+      btn.classList.add('disabled');
+    });
+  }
+
+  function enableAllTTSControls() {
+    const controls = document.querySelectorAll('.tts-controls button');
+    controls.forEach(btn => {
+      (btn as HTMLButtonElement).disabled = false;
+      btn.classList.remove('disabled');
+    });
   }
 
   function scrollToBottom() {
@@ -719,6 +996,8 @@ import SummaryModal from "./SummaryModal.astro";
       stateMachine.transition(BotState.LISTEN_INPUT);
       stateMachine.transition(BotState.EVALUATE);
       audioService.playLoop('thinking');
+      disableAllTTSControls();
+      ttsService.stop();
       updateUI();
       stateMachine.transition(BotState.FEEDBACK);
 
@@ -777,6 +1056,7 @@ import SummaryModal from "./SummaryModal.astro";
 
         // Get feedback from OpenAI
         const feedback = await openAIService.getFeedback(activityPayload);
+        console.log("Received feedback:", feedback);
 
         // Limpiar animación y remover mensaje de espera
         clearInterval(animationInterval);
@@ -785,15 +1065,29 @@ import SummaryModal from "./SummaryModal.astro";
         waitingMessageId = null;
         renderMessages(); // IMPORTANTE: renderizar después de remover
 
-        // Agregar feedback
-        let feedbackContent = `<div class="feedback-section">${marked(feedback.feedback)}</div>`;
-        if (feedback.corrections) {
-          feedbackContent += `<hr><div class="corrections-section"><strong>Corrections:</strong><br>${marked(feedback.corrections)}</div>`;
+        // Extraer secciones de feedback
+        const sections = extractFeedbackSections(feedback);
+        const feedbackLanguage = feedback.language || currentQuestion?.language || 'en';
+
+        // Construir contenido HTML para display (mantiene formato visual)
+        let feedbackContent = `<div class="feedback-section">${marked(sections.feedback)}</div>`;
+        if (sections.corrections) {
+          feedbackContent += `<hr><div class="corrections-section"><strong>Corrections:</strong><br>${marked(sections.corrections)}</div>`;
         }
-        if (feedback.tips) {
-          feedbackContent += `<hr><div class="tips-section"><strong>Tips:</strong><br>${marked(feedback.tips)}</div>`;
+        if (sections.tips) {
+          feedbackContent += `<hr><div class="tips-section"><strong>Tips:</strong><br>${marked(sections.tips)}</div>`;
         }
-        addMessage("feedback", feedbackContent);
+
+        // Crear mensaje con metadata de secciones para TTS
+        const feedbackMessage = addMessage("feedback", feedbackContent, feedbackLanguage);
+
+        // Guardar secciones separadas en el mensaje para TTS
+        (feedbackMessage as any).ttsData = {
+          feedback: sections.feedback,
+          corrections: sections.corrections,
+          tips: sections.tips,
+          language: feedbackLanguage
+        };
 
         // Accumulate feedback data
         const feedbackData: QuestionFeedbackData = {
@@ -839,8 +1133,12 @@ import SummaryModal from "./SummaryModal.astro";
         // Actualizar UI para habilitar NEXT
         updateUI();
 
+        // Re-enable TTS controls after feedback
+        enableAllTTSControls();
+
         console.log("Feedback complete. User must click NEXT to continue.");
       } catch (error) {
+        enableAllTTSControls();
         console.error("Error getting feedback:", error);
         clearInterval(animationInterval);
         audioService.stop('thinking');
@@ -969,6 +1267,9 @@ import SummaryModal from "./SummaryModal.astro";
     try {
       console.log("handleBackNavigation called");
 
+      // Stop any active TTS
+      ttsService.stop();
+
       // Guard: solo permitir navegación en ASK o FEEDBACK
       if (
         !canPerformAction("navigate back", [BotState.ASK, BotState.FEEDBACK])
@@ -1023,6 +1324,9 @@ import SummaryModal from "./SummaryModal.astro";
   function handleNextNavigation() {
     try {
       console.log("handleNextNavigation called");
+
+      // Stop any active TTS
+      ttsService.stop();
 
       // Guard: solo permitir navegación en FEEDBACK
       if (!canPerformAction("navigate next", [BotState.FEEDBACK])) {
@@ -1314,5 +1618,117 @@ import SummaryModal from "./SummaryModal.astro";
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* TTS Controls */
+.message-bubble {
+  position: relative;
+}
+
+.tts-controls {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.tts-play-btn,
+.tts-stop-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  color: var(--primary-color);
+}
+
+.tts-play-btn:hover,
+.tts-stop-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tts-stop-btn {
+  color: var(--danger-color);
+}
+
+.speaker-animated {
+  animation: pulse-speaker 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-speaker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Ajustar padding del content para que no se solape con controles */
+.message-bubble .content {
+  padding-right: 3rem;
+}
+
+.tts-controls button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Botones de sección TTS */
+.tts-section-btn {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  padding: 0.4rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--primary-color);
+  margin: 0.25rem;
+}
+
+.tts-section-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tts-section-btn.playing {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.tts-section-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tts-section-btn span {
+  font-size: 0.8rem;
+}
+
+/* Ajustar controles para feedback con secciones */
+.message-feedback .tts-controls {
+  position: relative;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-start;
 }
 </style>

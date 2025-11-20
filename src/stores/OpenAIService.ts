@@ -10,6 +10,7 @@ export interface OpenAIFeedback {
   feedback: string;
   corrections: string | null;
   tips: string;
+  language?: string;
 }
 
 export class OpenAIService {
