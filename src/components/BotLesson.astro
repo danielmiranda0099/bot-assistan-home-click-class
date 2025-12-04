@@ -16,6 +16,10 @@ import SummaryModal from "./SummaryModal.astro";
     </div>
   </div>
   <SpeechToText />
+  <p class="text-tip">
+    *Revisa y edita tus respuestas en busca de errores gramaticales antes de
+    enviarlas*
+  </p>
   <TextInput />
   <LessonControls />
   <SummaryModal />
@@ -30,7 +34,11 @@ import SummaryModal from "./SummaryModal.astro";
     OpenAIService,
     type OpenAIFeedback,
   } from "../stores/OpenAIService.ts";
-  import type { Activity, Message, QuestionFeedbackData } from "../types/index.ts";
+  import type {
+    Activity,
+    Message,
+    QuestionFeedbackData,
+  } from "../types/index.ts";
   // import activityData from "../activities/a2.json";
   import activityData from "../activities/a1.json";
   // import activityData from "../activities/example-activity-no-hints.json";
@@ -46,24 +54,36 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   // Función helper para extraer secciones de feedback
-  function extractFeedbackSections(feedbackData: OpenAIFeedback): FeedbackSections {
+  function extractFeedbackSections(
+    feedbackData: OpenAIFeedback
+  ): FeedbackSections {
     return {
-      feedback: feedbackData.feedback || '',
-      corrections: (feedbackData.corrections && feedbackData.corrections.trim()) ? feedbackData.corrections : null,
-      tips: (feedbackData.tips && feedbackData.tips.trim()) ? feedbackData.tips : null
+      feedback: feedbackData.feedback || "",
+      corrections:
+        feedbackData.corrections && feedbackData.corrections.trim()
+          ? feedbackData.corrections
+          : null,
+      tips:
+        feedbackData.tips && feedbackData.tips.trim()
+          ? feedbackData.tips
+          : null,
     };
   }
 
   const OPENAI_API_KEY = import.meta.env.PUBLIC_OPENAI_API_KEY;
   const OPENAI_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_ASSISTANT_ID;
-  const OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID = import.meta.env.PUBLIC_OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID;
+  const OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID = import.meta.env
+    .PUBLIC_OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID;
 
   // Initialize stores and state machine
   const stateMachine = new BotStateMachine();
   const activityStore = new ActivityStore();
   const chatStore = new ChatStore();
   const openAIService = new OpenAIService(OPENAI_API_KEY, OPENAI_ASSISTANT_ID);
-  const openAIGeneralFeedbackService = new OpenAIService(OPENAI_API_KEY, OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID);
+  const openAIGeneralFeedbackService = new OpenAIService(
+    OPENAI_API_KEY,
+    OPENAI_GENERAL_FEEDBACK_ASSISTANT_ID
+  );
   const audioService = new AudioService();
   const ttsService = new TextToSpeechService();
   let lessonEnded = false;
@@ -131,7 +151,7 @@ import SummaryModal from "./SummaryModal.astro";
   });
 
   function startLesson() {
-    audioService.play('click');
+    audioService.play("click");
 
     // Detect and clear corrupted localStorage data where counters are null or duplicates exist
     if (activityStore.currentActivity) {
@@ -141,22 +161,33 @@ import SummaryModal from "./SummaryModal.astro";
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          let reason = '';
-          if (parsed.correct === null || parsed.partial === null || parsed.incorrect === null || parsed.answeredQuestions === null) {
-            reason += 'null counters; ';
+          let reason = "";
+          if (
+            parsed.correct === null ||
+            parsed.partial === null ||
+            parsed.incorrect === null ||
+            parsed.answeredQuestions === null
+          ) {
+            reason += "null counters; ";
           }
-          const questionIds = parsed.questionsFeedback?.map((f: any) => f.questionId) || [];
+          const questionIds =
+            parsed.questionsFeedback?.map((f: any) => f.questionId) || [];
           const uniqueIds = new Set(questionIds);
           if (questionIds.length !== uniqueIds.size) {
-            reason += 'duplicates in questionsFeedback; ';
+            reason += "duplicates in questionsFeedback; ";
           }
           if (reason) {
             localStorage.removeItem(key);
-            console.log(`Cleared corrupted feedback data for activity ${activityId}: ${reason.trim()}`);
+            console.log(
+              `Cleared corrupted feedback data for activity ${activityId}: ${reason.trim()}`
+            );
           }
         } catch (error) {
           localStorage.removeItem(key);
-          console.log('Cleared invalid feedback data for activity:', activityId);
+          console.log(
+            "Cleared invalid feedback data for activity:",
+            activityId
+          );
         }
       }
     }
@@ -308,14 +339,21 @@ import SummaryModal from "./SummaryModal.astro";
     console.log("Current state machine state:", stateMachine.currentState);
     console.log("Lesson ended flag:", lessonEnded);
     console.log("Current question index:", activityStore.currentQuestionIndex);
-    console.log("Total questions:", activityStore.currentActivity?.questions.length || 0);
+    console.log(
+      "Total questions:",
+      activityStore.currentActivity?.questions.length || 0
+    );
 
     // Play click sound
     audioService.play("click");
 
     // Guard: solo permitir en FEEDBACK cuando es la última pregunta
     if (!canPerformAction("show summary", [BotState.FEEDBACK])) {
-      console.warn("❌ Cannot show summary: Invalid state. Current state:", stateMachine.currentState, "Allowed states: [BotState.FEEDBACK]");
+      console.warn(
+        "❌ Cannot show summary: Invalid state. Current state:",
+        stateMachine.currentState,
+        "Allowed states: [BotState.FEEDBACK]"
+      );
       return;
     }
     console.log("✅ State validation passed");
@@ -323,13 +361,26 @@ import SummaryModal from "./SummaryModal.astro";
     const isLast = isLastQuestion();
     console.log("Is last question:", isLast);
     if (!isLast) {
-      console.warn("❌ Cannot show summary: Not on last question. Current index:", activityStore.currentQuestionIndex, "Total questions:", activityStore.currentActivity?.questions.length || 0);
+      console.warn(
+        "❌ Cannot show summary: Not on last question. Current index:",
+        activityStore.currentQuestionIndex,
+        "Total questions:",
+        activityStore.currentActivity?.questions.length || 0
+      );
       return;
     }
     console.log("✅ Last question validation passed");
 
     const currentQuestion = activityStore.getCurrentQuestion();
-    console.log("Current question:", currentQuestion ? { id: currentQuestion.id, question: currentQuestion.question.substring(0, 50) + "..." } : "null");
+    console.log(
+      "Current question:",
+      currentQuestion
+        ? {
+            id: currentQuestion.id,
+            question: currentQuestion.question.substring(0, 50) + "...",
+          }
+        : "null"
+    );
 
     if (!currentQuestion) {
       console.warn("❌ Cannot show summary: No current question available");
@@ -340,7 +391,10 @@ import SummaryModal from "./SummaryModal.astro";
     console.log("Is current question answered:", isAnswered);
 
     if (!isAnswered) {
-      console.warn("❌ Cannot show summary: Last question not answered. Question ID:", currentQuestion.id);
+      console.warn(
+        "❌ Cannot show summary: Last question not answered. Question ID:",
+        currentQuestion.id
+      );
       return;
     }
     console.log("✅ Question answered validation passed");
@@ -356,7 +410,7 @@ import SummaryModal from "./SummaryModal.astro";
         correct: accumulator.correct,
         partial: accumulator.partial,
         incorrect: accumulator.incorrect,
-        questionsFeedbackCount: accumulator.questionsFeedback.length
+        questionsFeedbackCount: accumulator.questionsFeedback.length,
       });
     }
 
@@ -369,16 +423,26 @@ import SummaryModal from "./SummaryModal.astro";
     const isComplete = activityStore.isActivityComplete();
     console.log("Is activity complete:", isComplete);
     if (!isComplete) {
-      console.warn("❌ Cannot show summary: Activity not complete. Answered questions:", accumulator.answeredQuestions, "Total questions:", accumulator.totalQuestions);
+      console.warn(
+        "❌ Cannot show summary: Activity not complete. Answered questions:",
+        accumulator.answeredQuestions,
+        "Total questions:",
+        accumulator.totalQuestions
+      );
       return;
     }
     console.log("✅ Activity completion validation passed");
 
     // Check if modal function exists
     const openModalFunction = (window as any).openSummaryModal;
-    console.log("openSummaryModal function exists on window:", !!openModalFunction);
+    console.log(
+      "openSummaryModal function exists on window:",
+      !!openModalFunction
+    );
     if (!openModalFunction) {
-      console.warn("❌ Cannot show summary: openSummaryModal function not found on window");
+      console.warn(
+        "❌ Cannot show summary: openSummaryModal function not found on window"
+      );
       return;
     }
     console.log("✅ Modal function availability validation passed");
@@ -387,7 +451,9 @@ import SummaryModal from "./SummaryModal.astro";
     const modalElement = document.getElementById("summary-modal");
     console.log("Summary modal element exists in DOM:", !!modalElement);
     if (!modalElement) {
-      console.warn("❌ Cannot show summary: Summary modal element not found in DOM");
+      console.warn(
+        "❌ Cannot show summary: Summary modal element not found in DOM"
+      );
       return;
     }
     console.log("✅ Modal element existence validation passed");
@@ -421,7 +487,12 @@ import SummaryModal from "./SummaryModal.astro";
     }
   }
 
-  function addMessage(type: Message["type"], content: string, language?: string, ttsData?: any): Message {
+  function addMessage(
+    type: Message["type"],
+    content: string,
+    language?: string,
+    ttsData?: any
+  ): Message {
     const chatContainer = document.querySelector(".chat-container");
     const shouldScroll = chatContainer
       ? chatContainer.scrollTop + chatContainer.clientHeight >=
@@ -450,7 +521,10 @@ import SummaryModal from "./SummaryModal.astro";
     }
 
     // Auto-reproducción condicional para preguntas y feedback
-    if ((type === "assistant" || type === "feedback") && !ttsService.hasBeenPlayed(message.id)) {
+    if (
+      (type === "assistant" || type === "feedback") &&
+      !ttsService.hasBeenPlayed(message.id)
+    ) {
       setTimeout(() => {
         handleAutoPlayTTS(message);
       }, 100);
@@ -463,38 +537,38 @@ import SummaryModal from "./SummaryModal.astro";
 
     return message;
   }
-  
+
   function handleAutoPlayTTS(message: Message) {
     // Si es feedback con secciones, solo reproducir la sección principal
-    if (message.type === 'feedback' && (message as any).ttsData) {
+    if (message.type === "feedback" && (message as any).ttsData) {
       const ttsData = (message as any).ttsData;
-      const lang = ttsData.language || 'en';
+      const lang = ttsData.language || "en";
       const sectionId = `${message.id}-feedback`;
 
       ttsService.speak(ttsData.feedback, lang, sectionId, {
         onStart: () => {
-          updateSectionTTSState(message.id, 'feedback', 'playing');
+          updateSectionTTSState(message.id, "feedback", "playing");
         },
         onEnd: () => {
-          updateSectionTTSState(message.id, 'feedback', 'stopped');
+          updateSectionTTSState(message.id, "feedback", "stopped");
           handleTTSComplete(message.type);
-        }
+        },
       });
     } else {
       // Para otros tipos, comportamiento normal
-      const lang = message.language || 'en';
+      const lang = message.language || "en";
       ttsService.speak(message.content, lang, message.id, {
         onStart: () => {
-          updateTTSControls(message.id, 'playing');
+          updateTTSControls(message.id, "playing");
         },
         onEnd: () => {
-          updateTTSControls(message.id, 'stopped');
+          updateTTSControls(message.id, "stopped");
           handleTTSComplete(message.type);
-        }
+        },
       });
     }
   }
-  
+
   function handleTTSComplete(messageType: Message["type"]) {
     if (messageType === "feedback") {
       // No hacer nada, esperar acción del usuario (NEXT)
@@ -502,7 +576,7 @@ import SummaryModal from "./SummaryModal.astro";
     }
     // Para otros tipos, continuar flujo normal si es necesario
   }
-  
+
   function renderMessages() {
     try {
       const messagesContainer = document.getElementById("chat-messages");
@@ -513,9 +587,10 @@ import SummaryModal from "./SummaryModal.astro";
 
       // Collect existing message IDs before clearing
       const existingMessageIds = new Set<string>();
-      const existingBubbles = messagesContainer.querySelectorAll('[data-message-id]');
-      existingBubbles.forEach(bubble => {
-        const id = bubble.getAttribute('data-message-id');
+      const existingBubbles =
+        messagesContainer.querySelectorAll("[data-message-id]");
+      existingBubbles.forEach((bubble) => {
+        const id = bubble.getAttribute("data-message-id");
         if (id) {
           existingMessageIds.add(id);
         }
@@ -564,7 +639,7 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   function shouldHaveTTSControls(type: Message["type"]): boolean {
-    return ['assistant', 'user', 'feedback', 'greeting'].includes(type);
+    return ["assistant", "user", "feedback", "greeting"].includes(type);
   }
 
   function createTTSControls(message: Message): HTMLElement {
@@ -573,35 +648,36 @@ import SummaryModal from "./SummaryModal.astro";
     container.setAttribute("data-tts-state", "idle");
 
     // Si el mensaje tiene secciones (feedback), crear controles múltiples
-    const hasSections = (message as any).ttsData && message.type === 'feedback';
+    const hasSections = (message as any).ttsData && message.type === "feedback";
 
     if (hasSections) {
       const ttsData = (message as any).ttsData;
 
       // Feedback (siempre visible, auto-play)
-      const feedbackBtn = createTTSButton('feedback', 'Feedback');
-      feedbackBtn.classList.add('tts-section-btn', 'tts-feedback-btn');
+      const feedbackBtn = createTTSButton("feedback", "Feedback");
+      feedbackBtn.classList.add("tts-section-btn", "tts-feedback-btn");
       container.appendChild(feedbackBtn);
 
       // Corrections (solo si existe y no está vacío)
       if (ttsData.corrections && ttsData.corrections.trim()) {
-        const correctionsBtn = createTTSButton('corrections', 'Corrections');
-        correctionsBtn.classList.add('tts-section-btn', 'tts-corrections-btn');
+        const correctionsBtn = createTTSButton("corrections", "Corrections");
+        correctionsBtn.classList.add("tts-section-btn", "tts-corrections-btn");
         container.appendChild(correctionsBtn);
       }
 
       // Tips (solo si existe y no está vacío)
       if (ttsData.tips && ttsData.tips.trim()) {
-        const tipsBtn = createTTSButton('tips', 'Tips');
-        tipsBtn.classList.add('tts-section-btn', 'tts-tips-btn');
+        const tipsBtn = createTTSButton("tips", "Tips");
+        tipsBtn.classList.add("tts-section-btn", "tts-tips-btn");
         container.appendChild(tipsBtn);
       }
 
       // Añadir event listeners
-      container.querySelectorAll('.tts-section-btn').forEach(btn => {
-        btn.addEventListener('click', () => handleSectionTTS(message, btn.getAttribute('data-section')!));
+      container.querySelectorAll(".tts-section-btn").forEach((btn) => {
+        btn.addEventListener("click", () =>
+          handleSectionTTS(message, btn.getAttribute("data-section")!)
+        );
       });
-
     } else {
       // Control TTS normal (para assistant, hint, etc.)
       const playBtn = document.createElement("button");
@@ -624,7 +700,7 @@ import SummaryModal from "./SummaryModal.astro";
       playBtn.addEventListener("click", () => handleManualPlayTTS(message));
       stopBtn.addEventListener("click", () => {
         ttsService.stop();
-        updateTTSControls(message.id, 'stopped');
+        updateTTSControls(message.id, "stopped");
       });
 
       container.appendChild(playBtn);
@@ -636,10 +712,10 @@ import SummaryModal from "./SummaryModal.astro";
 
   // Helper para crear botones de sección
   function createTTSButton(section: string, label: string): HTMLElement {
-    const btn = document.createElement('button');
-    btn.className = 'tts-section-btn';
-    btn.setAttribute('data-section', section);
-    btn.setAttribute('data-state', 'idle');
+    const btn = document.createElement("button");
+    btn.className = "tts-section-btn";
+    btn.setAttribute("data-section", section);
+    btn.setAttribute("data-state", "idle");
     btn.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="play-icon">
         <path d="M8 5v14l11-7z"/>
@@ -660,12 +736,12 @@ import SummaryModal from "./SummaryModal.astro";
 
     if (!clickedBtn) return;
 
-    const currentState = clickedBtn.getAttribute('data-state');
+    const currentState = clickedBtn.getAttribute("data-state");
 
     // Si ya está reproduciendo esta sección, detener
-    if (currentState === 'playing') {
+    if (currentState === "playing") {
       ttsService.stop();
-      updateSectionTTSState(message.id, section, 'stopped');
+      updateSectionTTSState(message.id, section, "stopped");
       return;
     }
 
@@ -676,55 +752,61 @@ import SummaryModal from "./SummaryModal.astro";
     const allBtns = document.querySelectorAll(
       `[data-message-id="${message.id}"] .tts-section-btn`
     );
-    allBtns.forEach(btn => {
-      const btnSection = btn.getAttribute('data-section');
+    allBtns.forEach((btn) => {
+      const btnSection = btn.getAttribute("data-section");
       if (btnSection) {
-        updateSectionTTSState(message.id, btnSection, 'stopped');
+        updateSectionTTSState(message.id, btnSection, "stopped");
       }
     });
 
     // Obtener el texto de la sección correspondiente
-    let textToSpeak = '';
-    switch(section) {
-      case 'feedback':
+    let textToSpeak = "";
+    switch (section) {
+      case "feedback":
         textToSpeak = ttsData.feedback;
         break;
-      case 'corrections':
-        textToSpeak = ttsData.corrections || '';
+      case "corrections":
+        textToSpeak = ttsData.corrections || "";
         break;
-      case 'tips':
-        textToSpeak = ttsData.tips || '';
+      case "tips":
+        textToSpeak = ttsData.tips || "";
         break;
     }
 
     if (!textToSpeak) return;
 
-    const lang = ttsData.language || 'en';
+    const lang = ttsData.language || "en";
     const sectionId = `${message.id}-${section}`;
 
     // Iniciar reproducción
     ttsService.speak(textToSpeak, lang, sectionId, {
       onStart: () => {
-        updateSectionTTSState(message.id, section, 'playing');
+        updateSectionTTSState(message.id, section, "playing");
       },
       onEnd: () => {
-        updateSectionTTSState(message.id, section, 'stopped');
-      }
+        updateSectionTTSState(message.id, section, "stopped");
+      },
     });
   }
 
-  function updateSectionTTSState(messageId: string, section: string, state: 'playing' | 'stopped'): void {
+  function updateSectionTTSState(
+    messageId: string,
+    section: string,
+    state: "playing" | "stopped"
+  ): void {
     const bubble = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!bubble) return;
 
-    const btn = bubble.querySelector(`[data-section="${section}"]`) as HTMLElement;
+    const btn = bubble.querySelector(
+      `[data-section="${section}"]`
+    ) as HTMLElement;
     if (!btn) return;
 
     const label = section.charAt(0).toUpperCase() + section.slice(1);
 
-    if (state === 'playing') {
-      btn.setAttribute('data-state', 'playing');
-      btn.classList.add('playing');
+    if (state === "playing") {
+      btn.setAttribute("data-state", "playing");
+      btn.classList.add("playing");
       btn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="speaker-animated">
           <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
@@ -732,8 +814,8 @@ import SummaryModal from "./SummaryModal.astro";
         <span class="btn-label">${label}</span>
       `;
     } else {
-      btn.setAttribute('data-state', 'idle');
-      btn.classList.remove('playing');
+      btn.setAttribute("data-state", "idle");
+      btn.classList.remove("playing");
       btn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="play-icon">
           <path d="M8 5v14l11-7z"/>
@@ -744,58 +826,58 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   function handleManualPlayTTS(message: Message) {
-    const lang = message.language || 'en';
+    const lang = message.language || "en";
     ttsService.speak(message.content, lang, message.id, {
       onStart: () => {
-        updateTTSControls(message.id, 'playing');
+        updateTTSControls(message.id, "playing");
       },
       onEnd: () => {
-        updateTTSControls(message.id, 'stopped');
-      }
+        updateTTSControls(message.id, "stopped");
+      },
     });
   }
 
-  function updateTTSControls(messageId: string, state: 'playing' | 'stopped') {
+  function updateTTSControls(messageId: string, state: "playing" | "stopped") {
     const bubble = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!bubble) return;
 
-    const controls = bubble.querySelector('.tts-controls');
+    const controls = bubble.querySelector(".tts-controls");
     if (!controls) return;
 
-    const playBtn = controls.querySelector('.tts-play-btn');
-    const stopBtn = controls.querySelector('.tts-stop-btn');
+    const playBtn = controls.querySelector(".tts-play-btn");
+    const stopBtn = controls.querySelector(".tts-stop-btn");
 
-    if (state === 'playing') {
+    if (state === "playing") {
       (playBtn as HTMLElement).innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="speaker-animated">
           <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
           <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
         </svg>
       `;
-      (stopBtn as HTMLElement).style.display = 'block';
+      (stopBtn as HTMLElement).style.display = "block";
     } else {
       (playBtn as HTMLElement).innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z"/>
         </svg>
       `;
-      (stopBtn as HTMLElement).style.display = 'none';
+      (stopBtn as HTMLElement).style.display = "none";
     }
   }
 
   function disableAllTTSControls() {
-    const controls = document.querySelectorAll('.tts-controls button');
-    controls.forEach(btn => {
+    const controls = document.querySelectorAll(".tts-controls button");
+    controls.forEach((btn) => {
       (btn as HTMLButtonElement).disabled = true;
-      btn.classList.add('disabled');
+      btn.classList.add("disabled");
     });
   }
 
   function enableAllTTSControls() {
-    const controls = document.querySelectorAll('.tts-controls button');
-    controls.forEach(btn => {
+    const controls = document.querySelectorAll(".tts-controls button");
+    controls.forEach((btn) => {
       (btn as HTMLButtonElement).disabled = false;
-      btn.classList.remove('disabled');
+      btn.classList.remove("disabled");
     });
   }
 
@@ -885,7 +967,8 @@ import SummaryModal from "./SummaryModal.astro";
       ".lesson-controls button:first-child"
     ) as HTMLButtonElement;
     if (resetBtn) {
-      resetBtn.disabled = stateMachine.currentState === BotState.INIT || isEvaluating;
+      resetBtn.disabled =
+        stateMachine.currentState === BotState.INIT || isEvaluating;
     }
 
     // === BOTÓN TRY AGAIN ===
@@ -929,7 +1012,8 @@ import SummaryModal from "./SummaryModal.astro";
     }
 
     // === NAVEGACIÓN BACK/NEXT ===
-    const canGoBack = activityStore.currentQuestionIndex > 0 && !lessonEnded && !isEvaluating;
+    const canGoBack =
+      activityStore.currentQuestionIndex > 0 && !lessonEnded && !isEvaluating;
     const canGoNext =
       isQuestionAnswered &&
       stateMachine.currentState === BotState.FEEDBACK &&
@@ -992,12 +1076,15 @@ import SummaryModal from "./SummaryModal.astro";
       console.log("Total Questions:", accumulator.totalQuestions);
       console.log("Answered Questions:", accumulator.answeredQuestions);
       console.log("Is Complete:", activityStore.isActivityComplete());
-      console.log("Questions Feedback:", accumulator.questionsFeedback.map(f => ({
-        questionId: f.questionId,
-        score: f.score,
-        decision: f.decision,
-        timestamp: new Date(f.timestamp).toISOString()
-      })));
+      console.log(
+        "Questions Feedback:",
+        accumulator.questionsFeedback.map((f) => ({
+          questionId: f.questionId,
+          score: f.score,
+          decision: f.decision,
+          timestamp: new Date(f.timestamp).toISOString(),
+        }))
+      );
     }
     console.log("=== END DEBUG ===");
   }
@@ -1037,7 +1124,7 @@ import SummaryModal from "./SummaryModal.astro";
     if (stateMachine.currentState === BotState.ASK) {
       stateMachine.transition(BotState.LISTEN_INPUT);
       stateMachine.transition(BotState.EVALUATE);
-      audioService.playLoop('thinking');
+      audioService.playLoop("thinking");
       disableAllTTSControls();
       ttsService.stop();
       updateUI();
@@ -1102,14 +1189,15 @@ import SummaryModal from "./SummaryModal.astro";
 
         // Limpiar animación y remover mensaje de espera
         clearInterval(animationInterval);
-        audioService.stop('thinking');
+        audioService.stop("thinking");
         chatStore.removeMessage(waitingMessageId!);
         waitingMessageId = null;
         renderMessages(); // IMPORTANTE: renderizar después de remover
 
         // Extraer secciones de feedback
         const sections = extractFeedbackSections(feedback);
-        const feedbackLanguage = feedback.language || currentQuestion?.language || 'en';
+        const feedbackLanguage =
+          feedback.language || currentQuestion?.language || "en";
 
         // Construir contenido HTML para display (mantiene formato visual)
         let feedbackContent = `<div class="feedback-section">${marked(sections.feedback)}</div>`;
@@ -1121,12 +1209,17 @@ import SummaryModal from "./SummaryModal.astro";
         }
 
         // Crear mensaje con metadata de secciones para TTS
-        const feedbackMessage = addMessage("feedback", feedbackContent, feedbackLanguage, {
-          feedback: sections.feedback,
-          corrections: sections.corrections,
-          tips: sections.tips,
-          language: feedbackLanguage
-        });
+        const feedbackMessage = addMessage(
+          "feedback",
+          feedbackContent,
+          feedbackLanguage,
+          {
+            feedback: sections.feedback,
+            corrections: sections.corrections,
+            tips: sections.tips,
+            language: feedbackLanguage,
+          }
+        );
 
         // Accumulate feedback data
         const feedbackData: QuestionFeedbackData = {
@@ -1180,7 +1273,7 @@ import SummaryModal from "./SummaryModal.astro";
         enableAllTTSControls();
         console.error("Error getting feedback:", error);
         clearInterval(animationInterval);
-        audioService.stop('thinking');
+        audioService.stop("thinking");
         chatStore.removeMessage(waitingMessageId!);
         waitingMessageId = null;
         renderMessages(); // IMPORTANTE: renderizar después de remover
@@ -1615,10 +1708,10 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   .message-waiting .content {
-      background-color: lightgray;
-      color: var(--dark-color);
-      font-style: italic;
-      animation: slideInLeft 0.6s ease-out;
+    background-color: lightgray;
+    color: var(--dark-color);
+    font-style: italic;
+    animation: slideInLeft 0.6s ease-out;
   }
 
   .message-error {
@@ -1626,11 +1719,11 @@ import SummaryModal from "./SummaryModal.astro";
   }
 
   .message-error .content {
-      background-color: #ff4444;
-      color: white;
-      font-weight: bold;
-      text-align: center;
-      animation: slideInUp 0.6s ease-out;
+    background-color: #ff4444;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    animation: slideInUp 0.6s ease-out;
   }
 
   /* Prevent re-animation on re-renders */
@@ -1638,166 +1731,175 @@ import SummaryModal from "./SummaryModal.astro";
     animation: none !important;
   }
 
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-35px);
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-35px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-}
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+  /* TTS Controls */
+  .message-bubble {
+    position: relative;
+    width: fit-content;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .tts-controls {
+    position: absolute;
+    top: -0.8rem;
+    right: -0.2rem;
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
   }
-}
 
-/* TTS Controls */
-.message-bubble {
-  position: relative;
-  width: fit-content;
-}
-
-.tts-controls {
-  position: absolute;
-  top: -0.8rem;
-  right: -0.2rem;
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-}
-
-.tts-play-btn,
-.tts-stop-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 0;
-  color: var(--primary-color);
-}
-
-.tts-play-btn:hover,
-.tts-stop-btn:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.tts-stop-btn {
-  color: var(--danger-color);
-}
-
-.speaker-animated {
-  animation: pulse-speaker 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-speaker {
-  0%, 100% {
-    opacity: 1;
+  .tts-play-btn,
+  .tts-stop-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    color: var(--primary-color);
   }
-  50% {
-    opacity: 0.6;
+
+  .tts-play-btn:hover,
+  .tts-stop-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
-}
 
-/* Ajustar padding del content para que no se solape con controles */
-.message-bubble .content {
-  padding-right: 3rem;
-}
-
-.tts-controls button.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Botones de sección TTS */
-.tts-section-btn {
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  border-radius: 20px;
-  padding: 0.5rem 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #333;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-.tts-section-btn:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: var(--primary-color);
-}
-
-.tts-section-btn[data-state="playing"] {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-  animation: pulse-button 1.5s ease-in-out infinite;
-}
-
-.tts-section-btn svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.tts-section-btn .btn-label {
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-/* Animación para botón en reproducción */
-@keyframes pulse-button {
-  0%, 100% {
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  .tts-stop-btn {
+    color: var(--danger-color);
   }
-  50% {
-    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.6);
-  }
-}
 
-/* Icono de speaker animado */
-.speaker-animated {
-  animation: pulse-speaker 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-speaker {
-  0%, 100% {
-    opacity: 1;
+  .speaker-animated {
+    animation: pulse-speaker 1.5s ease-in-out infinite;
   }
-  50% {
-    opacity: 0.6;
-  }
-}
 
-/* Ajustar controles para feedback con secciones */
-.message-feedback .tts-controls {
-  position: relative;
-  margin-top: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-start;
-}
+  @keyframes pulse-speaker {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  /* Ajustar padding del content para que no se solape con controles */
+  .message-bubble .content {
+    padding-right: 3rem;
+  }
+
+  .tts-controls button.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Botones de sección TTS */
+  .tts-section-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 0.5rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  .tts-section-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+  }
+
+  .tts-section-btn[data-state="playing"] {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    animation: pulse-button 1.5s ease-in-out infinite;
+  }
+
+  .tts-section-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .tts-section-btn .btn-label {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  /* Animación para botón en reproducción */
+  @keyframes pulse-button {
+    0%,
+    100% {
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+    50% {
+      box-shadow: 0 4px 20px rgba(0, 123, 255, 0.6);
+    }
+  }
+
+  /* Icono de speaker animado */
+  .speaker-animated {
+    animation: pulse-speaker 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-speaker {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  /* Ajustar controles para feedback con secciones */
+  .message-feedback .tts-controls {
+    position: relative;
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-start;
+  }
+
+  .text-tip {
+    width: 80%;
+    font-size: 0.85rem;
+    line-height: 0.8;
+  }
 </style>
