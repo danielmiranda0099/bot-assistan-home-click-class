@@ -9,7 +9,7 @@ export interface OpenAIFeedback {
   };
   feedback: string;
   corrections: string | null;
-  tips: string;
+  tips: string | null;
   language?: string;
 }
 
