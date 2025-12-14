@@ -1,0 +1,431 @@
+<div class="tts-container">
+  <div class="audio-player">
+    <audio id="audioPlayer" controls>
+      <source src="" type="audio/mpeg" />
+      Tu navegador no soporta el elemento de audio.
+    </audio>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs-header">
+      <button class="tab-button active" data-tab="subtitles">Subtitles</button>
+      <button class="tab-button" data-tab="text">Text</button>
+    </div>
+
+    <div class="tab-content">
+      <div id="subtitles-panel" class="tab-panel active">
+        <div class="subtitle-controls">
+          <label for="subtitleToggle">Habilitar subtítulos:</label>
+          <label class="switch">
+            <input type="checkbox" id="subtitleToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="subtitleDisplay" class="subtitle-display disabled">
+          Los subtítulos aparecerán aquí cuando estén habilitados
+        </div>
+      </div>
+
+      <div id="text-panel" class="tab-panel">
+        <div id="textDisplay" class="text-display"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tts-container {
+    /* width: 35%; */
+    padding: 0;
+    display: flex;
+    gap: 1rem;
+  }
+
+  .audio-player {
+    width: 30%;
+    margin-bottom: 1.5rem;
+    background: #f5f5f5;
+    padding: 1rem;
+    border-radius: 22px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  audio {
+    width: 100%;
+    outline: none;
+  }
+
+  .tabs-container {
+    flex: 1;
+    background: white;
+    border-radius: 22px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    /* border: 1px solid black; */
+  }
+
+  .tabs-header {
+    border-radius: 22px;
+    display: flex;
+    border-bottom: 2px solid #e0e0e0;
+    background: #fafafa;
+  }
+
+  .tab-button {
+    flex: 1;
+    padding: 15px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .tab-button:hover {
+    background: #f0f0f0;
+  }
+
+  .tab-button.active {
+    color: #2563eb;
+    background: white;
+  }
+
+  .tab-button.active::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #2563eb;
+  }
+
+  .tab-content {
+    height: 12rem;
+    padding: 1.5rem;
+    overflow: scroll;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  .subtitle-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+
+  .subtitle-controls label {
+    font-weight: 500;
+    color: #333;
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 26px;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  input:checked + .slider {
+    background-color: #2563eb;
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(24px);
+  }
+
+  .subtitle-display {
+    background: #1a1a1a;
+    color: white;
+    padding: 0rem;
+    border-radius: 8px;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .subtitle-display.disabled {
+    background: #f0f0f0;
+    color: #999;
+    font-style: italic;
+  }
+
+  .text-display {
+    line-height: 1.8;
+    color: #333;
+    font-size: 16px;
+    white-space: pre-wrap;
+  }
+
+  .current-line {
+    background: #fef3c7;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.3s ease;
+  }
+</style>
+
+<script>
+  (function () {
+    // Configuración de archivos - MODIFICA ESTAS RUTAS
+    const audioSrc = "/activity/prudence.mp3";
+    const subtitlesPath = "/activity/prudence.srt";
+
+    // Elementos del DOM
+    const audioPlayer = document.getElementById("audioPlayer");
+    const subtitleToggle = document.getElementById("subtitleToggle");
+    const subtitleDisplay = document.getElementById("subtitleDisplay");
+    const textDisplay = document.getElementById("textDisplay");
+    const tabButtons = document.querySelectorAll(".tab-button");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+
+    // Verificar que todos los elementos existen
+    if (!audioPlayer || !subtitleToggle || !subtitleDisplay || !textDisplay) {
+      console.error(
+        "❌ Error: No se pudieron encontrar todos los elementos del DOM"
+      );
+      return;
+    }
+
+    // Type-safe audio element
+    const audio = audioPlayer;
+    audio.src = audioSrc;
+
+    // Interfaces para TypeScript
+    interface Subtitle {
+      index: number;
+      start: number;
+      end: number;
+      text: string;
+    }
+
+    // Variables de estado con tipos explícitos
+    let subtitles: Subtitle[] = [];
+    let currentSubtitleIndex: number = -1;
+    let subtitlesEnabled: boolean = false;
+
+    // Convertir tiempo SRT a segundos
+    function timeToSeconds(timeString: string): number {
+      const parts = timeString.split(":");
+      const seconds = parts[2].split(",");
+      return (
+        parseInt(parts[0]) * 3600 +
+        parseInt(parts[1]) * 60 +
+        parseInt(seconds[0]) +
+        parseInt(seconds[1]) / 1000
+      );
+    }
+
+    // Parser de SRT
+    function parseSRT(srtText: string): Subtitle[] {
+      const lines = srtText.trim().split("\n");
+      const subs: Subtitle[] = [];
+      let currentSub: Partial<Subtitle> | null = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (!line) {
+          if (currentSub && currentSub.text) {
+            subs.push(currentSub as Subtitle);
+            currentSub = null;
+          }
+          continue;
+        }
+
+        if (/^\d+$/.test(line)) {
+          currentSub = { index: parseInt(line) };
+        } else if (line.includes("-->")) {
+          const [start, end] = line
+            .split("-->")
+            .map((t) => timeToSeconds(t.trim()));
+          if (currentSub) {
+            currentSub.start = start;
+            currentSub.end = end;
+            currentSub.text = "";
+          }
+        } else if (currentSub && currentSub.start !== undefined) {
+          currentSub.text += (currentSub.text ? " " : "") + line;
+        }
+      }
+
+      if (currentSub && currentSub.text) {
+        subs.push(currentSub as Subtitle);
+      }
+
+      return subs;
+    }
+
+    // Mostrar texto completo
+    function displayFullText(): void {
+      if (subtitles.length === 0) {
+        textDisplay.textContent = "Cargando texto...";
+        return;
+      }
+
+      textDisplay.innerHTML = subtitles
+        .map((sub, idx) => `<span id="text-line-${idx}">${sub.text}</span>`)
+        .join(" ");
+    }
+
+    // Actualizar subtítulo actual
+    function updateSubtitle(currentTime: number): void {
+      const activeIndex = subtitles.findIndex(
+        (sub) => currentTime >= sub.start && currentTime <= sub.end
+      );
+
+      if (activeIndex !== currentSubtitleIndex) {
+        currentSubtitleIndex = activeIndex;
+
+        if (subtitlesEnabled && activeIndex !== -1) {
+          subtitleDisplay.textContent = subtitles[activeIndex].text;
+          subtitleDisplay.classList.remove("disabled");
+        } else if (subtitlesEnabled) {
+          subtitleDisplay.textContent = "";
+          subtitleDisplay.classList.remove("disabled");
+        }
+
+        // Resaltar línea actual en pestaña de texto
+        document.querySelectorAll(".current-line").forEach((el) => {
+          el.classList.remove("current-line");
+        });
+
+        if (activeIndex !== -1) {
+          const textLine = document.getElementById(`text-line-${activeIndex}`);
+          if (textLine) {
+            textLine.classList.add("current-line");
+            textLine.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      }
+    }
+
+    // Cargar archivo SRT
+    async function loadSubtitles(): Promise<void> {
+      try {
+        const response = await fetch(subtitlesPath);
+
+        if (!response.ok) {
+          throw new Error(`Error al cargar subtítulos: ${response.status}`);
+        }
+
+        const srtContent = await response.text();
+        subtitles = parseSRT(srtContent);
+        displayFullText();
+
+        console.log(`✅ Subtítulos cargados: ${subtitles.length} líneas`);
+      } catch (error) {
+        console.error("❌ Error cargando subtítulos:", error);
+        subtitleDisplay.textContent = "Error al cargar los subtítulos";
+        subtitleDisplay.classList.add("disabled");
+        textDisplay.textContent =
+          "No se pudieron cargar los subtítulos. Verifica la ruta del archivo.";
+      }
+    }
+
+    // Event listeners para pestañas
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetTab = (button as HTMLButtonElement).dataset.tab;
+        if (!targetTab) return;
+
+        tabButtons.forEach((btn) => btn.classList.remove("active"));
+        tabPanels.forEach((panel) => panel.classList.remove("active"));
+
+        button.classList.add("active");
+        const targetPanel = document.getElementById(`${targetTab}-panel`);
+        if (targetPanel) {
+          targetPanel.classList.add("active");
+        }
+      });
+    });
+
+    // Toggle de subtítulos
+    subtitleToggle.addEventListener("change", (e) => {
+      const target = e.target as HTMLInputElement;
+      subtitlesEnabled = target.checked;
+
+      if (subtitlesEnabled) {
+        subtitleDisplay.classList.remove("disabled");
+        updateSubtitle(audio.currentTime);
+      } else {
+        subtitleDisplay.textContent = "Los subtítulos están deshabilitados";
+        subtitleDisplay.classList.add("disabled");
+      }
+    });
+
+    // Actualizar subtítulos mientras se reproduce
+    audio.addEventListener("timeupdate", () => {
+      updateSubtitle(audio.currentTime);
+    });
+
+    // Actualizar cuando se cambia la posición manualmente
+    audio.addEventListener("seeked", () => {
+      updateSubtitle(audio.currentTime);
+    });
+
+    // Limpiar subtítulo cuando se pausa
+    audio.addEventListener("pause", () => {
+      if (subtitlesEnabled && currentSubtitleIndex === -1) {
+        subtitleDisplay.textContent = "";
+      }
+    });
+
+    // Reiniciar al cargar
+    audio.addEventListener("loadedmetadata", () => {
+      currentSubtitleIndex = -1;
+      if (subtitlesEnabled) {
+        updateSubtitle(0);
+      }
+    });
+
+    // Inicializar componente
+    loadSubtitles();
+  })();
+</script>

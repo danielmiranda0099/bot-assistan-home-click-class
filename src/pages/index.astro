@@ -2,6 +2,7 @@
 import "../styles/variables.css";
 import "../styles/global.css";
 import BotLesson from "../components/BotLesson.astro";
+import TextToSpeach from "../components/TextToSpeach.astro";
 ---
 
 <html lang="en">
@@ -13,6 +14,34 @@ import BotLesson from "../components/BotLesson.astro";
     <title>Bot Lesson Assistant</title>
   </head>
   <body>
-    <BotLesson />
+    <main class="container-main">
+      <TextToSpeach />
+
+    <div class="container-avatar-chat">
+      <div class="container-avatar"></div>
+      <BotLesson />
+    </div>
+    </main>
   </body>
 </html>
+
+<style>
+  .container-main {
+    max-width: 1020px;
+    margin: 0 auto;
+    margin-top: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .container-avatar-chat {
+    display: flex;
+
+    .container-avatar {
+      width: 30%;
+      flex: 1;
+      background-color: red;
+    }
+  }
+</style>
